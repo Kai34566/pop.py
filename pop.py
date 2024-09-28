@@ -2183,7 +2183,7 @@ def callback_handler(call):
                     if 'vote_counts' not in chat.__dict__:
                         chat.vote_counts = {}
 
-                    if not chat.players[from_id].get('has_voted', False)
+                    if not chat.players[from_id].get('has_voted', False):
                         victim_name = chat.players[target_id]['name']
                         chat.vote_counts[target_id] = chat.vote_counts.get(target_id, 0) + 1
                         chat.players[from_id]['has_voted'] = True
