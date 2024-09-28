@@ -2147,33 +2147,33 @@ def callback_handler(call):
                 elif player_role == '🧙‍♂️ Бомж' and action == 'б':  # Бомж выбирает цель
                     if not handle_night_action(call, chat, player_role):
                         return
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты ушел за бутылкой к {chat.players[chat.hobo_target]['name']}")
                     chat.hobo_target = target_id
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты ушел за бутылкой к {chat.players[chat.hobo_target]['name']}")
                     bot.send_message(chat.chat_id, f"🧙‍♂️ *Бомж* пошел к кому-то за бутылкой…", parse_mode="Markdown")
 
                 elif player_role == '💃🏼 Любовница' and action == 'л':
                     if not handle_night_action(call, chat, player_role):
                         return
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) провести ночь с {chat.players[chat.lover_target_id]['name']}")
-                    bot.send_message(chat.chat_id, "💃🏼 *Любовница* уже ждёт кого-то в гости...", parse_mode="Markdown")
                     chat.previous_lover_target_id = chat.lover_target_id
                     chat.lover_target_id = target_id
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) провести ночь с {chat.players[chat.lover_target_id]['name']}")
+                    bot.send_message(chat.chat_id, "💃🏼 *Любовница* уже ждёт кого-то в гости...", parse_mode="Markdown")
                     logging.info(f"Предыдущая цель любовницы обновлена: {chat.previous_lover_target_id}")
                     logging.info(f"Текущая цель любовницы: {chat.lover_target_id}")
 
                 elif player_role == '👨🏼‍💼 Адвокат' and action == 'а':  # Адвокат выбирает цель
                     if not handle_night_action(call, chat, player_role):
                         return
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал защищать {chat.players[chat.lawyer_target]['name']}")
                     chat.lawyer_target = target_id
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал защищать {chat.players[chat.lawyer_target]['name']}")
                     bot.send_message(chat.chat_id, "👨🏼‍💼 *Адвокат* ищет клиента для защиты...", parse_mode="Markdown")
 
                 elif player_role == '🔪 Маньяк' and action == 'мк':  # Маньяк выбирает жертву
                     if not handle_night_action(call, chat, player_role):
                         return
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал убить {chat.players[chat.maniac_target]['name']}")
                     chat.maniac_target = target_id
-                    bot.send_message(chat.chat_id, "🔪 *Маньяк* выбрал свою жертву на эту ночь...", parse_mode="Markdown")
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал убить {chat.players[chat.maniac_target]['name']}")
+                    bot.send_message(chat.chat_id, "🔪 *Маньяк* вышел на охоту...", parse_mode="Markdown")
 
                 elif action == 'vote':  # Голосование
                     if not is_voting_time:  
@@ -2183,11 +2183,11 @@ def callback_handler(call):
                     if 'vote_counts' not in chat.__dict__:
                         chat.vote_counts = {}
 
-                    if not chat.players[from_id].get('has_voted', False):
-                        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) {victim_name}")
+                    if not chat.players[from_id].get('has_voted', False)
                         victim_name = chat.players[target_id]['name']
                         chat.vote_counts[target_id] = chat.vote_counts.get(target_id, 0) + 1
                         chat.players[from_id]['has_voted'] = True
+                        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) {victim_name}")
                         voter_link = f"[{chat.players[from_id]['name']}](tg://user?id={from_id})"
                         target_link = f"[{chat.players[target_id]['name']}](tg://user?id={target_id})"
 
