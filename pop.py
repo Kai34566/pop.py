@@ -970,15 +970,7 @@ def start_message(message):
                             new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
 
                             try:
-                                # Получаем текущее сообщение, чтобы проверить его содержание и разметку
-                                current_message = bot.get_message(game_chat_id, chat.button_id)
-
-                                # Проверяем, отличается ли новое сообщение или клавиатура от текущих
-                                if current_message.text == new_text and current_message.reply_markup == new_markup:
-                                    logging.info("Сообщение не изменилось, обновление не требуется.")
-                                else:
-                                    # Обновляем сообщение, только если оно изменилось
-                                    bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
+                                bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
                             except Exception as e:
                                 logging.error(f"Ошибка обновления сообщения: {e}")
                             
