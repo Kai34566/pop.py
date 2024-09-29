@@ -598,8 +598,8 @@ def check_game_end(chat, game_start_time):
     for player_id, player in chat.players.items():
         if f"[{player['name']}](tg://user?id={player_id}) - {player['role']}" in winners:
             # Начисление 20 евро победителям
-            player_profiles[player_id]['euro'] += 20
-            bot.send_message(player_id, "Игра окончена!\nТы получил 💶 20!")
+            player_profiles[player_id]['euro'] += 0
+            bot.send_message(player_id, "Игра окончена!")
     
     # Если самоубийца выиграл
     if suicide_player:
@@ -625,7 +625,7 @@ def check_game_end(chat, game_start_time):
     # Отправляем проигравшим сообщение
     for player_id in chat.players:
         if player_id not in winners_ids and chat.players[player_id]['status'] != 'left':
-            bot.send_message(player_id, "Игра окончена!\nТы получил 💶 0")
+            bot.send_message(player_id, "Игра окончена!")
     
     # Подсчитываем время игры
     game_duration = time.time() - game_start_time
@@ -649,7 +649,7 @@ def check_game_end(chat, game_start_time):
             player_id = int(dead_player.split('=')[1].split(')')[0])
         
         try:
-            bot.send_message(player_id, "Игра окончена!\nТы получил 💶 0")
+            bot.send_message(player_id, "Игра окончена!")
         except Exception as e:
             logging.error(f"Не удалось отправить сообщение убитому игроку {player_id}: {e}")
 
@@ -864,7 +864,7 @@ def get_or_create_profile(user_id, user_name):
         profile = {
             'id': user_id,
             'name': user_name,
-            'euro': 1000,  # Например, стартовый баланс
+            'euro': 0,  # Например, стартовый баланс
             'coins': 0,
             'shield': 0,
             'fake_docs': 0  # Инициализируем fake_docs значением 0
@@ -970,7 +970,15 @@ def start_message(message):
                             new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
 
                             try:
-                                bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
+                                # Получаем текущее сообщение, чтобы проверить его содержание и разметку
+                                current_message = bot.get_message(game_chat_id, chat.button_id)
+
+                                # Проверяем, отличается ли новое сообщение или клавиатура от текущих
+                                if current_message.text == new_text and current_message.reply_markup == new_markup:
+                                    logging.info("Сообщение не изменилось, обновление не требуется.")
+                                else:
+                                    # Обновляем сообщение, только если оно изменилось
+                                    bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
                             except Exception as e:
                                 logging.error(f"Ошибка обновления сообщения: {e}")
                             
@@ -1338,53 +1346,6 @@ def handle_shop_actions(call):
         show_profile(call.message, message_id=call.message.message_id, user_id=user_id, user_name=user_name)
 
 
-@bot.message_handler(commands=['leave'])
-def leave_game(message):
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    chat = chat_list.get(chat_id)
-
-    bot.delete_message(chat_id, message.message_id)
-
-    if not chat:
-        bot.send_message(chat_id, "Игра не найдена.")
-        return
-
-    if user_id not in chat.players:
-        bot.send_message(chat_id, "Вы не зарегистрированы в этой игре.")
-        return
-
-    role = chat.players[user_id]['role']
-    name = chat.players[user_id]['name']
-    
-    # Изменяем статус игрока на 'left'
-    chat.players[user_id]['status'] = 'left'
-
-    if chat.game_running:
-        bot.send_message(user_id, "Вы вышли из игры.")
-        bot.send_message(chat_id, f"[{name}](tg://user?id={user_id}) не выдержал гнетущей атмосферы этого города и повесился. Он был {emoji(role)} {role}", parse_mode="Markdown")
-
-        # Проверка, был ли этот игрок Доном
-        if role == '🤵🏻‍♂️ Дон':
-            check_and_transfer_don_role(chat)
-        
-        # Проверка, был ли этот игрок Комиссаром
-        if role == '🕵️‍♂️ Комиссар Каттани':
-            check_and_transfer_sheriff_role(chat)
-    else:
-        # Обновляем только количество игроков и список участников
-        player_count = len(chat.players)
-
-        if player_count == 0:
-            updated_message_text = "*Ведётся набор в игру*\n_0 игроков_"
-        else:
-            updated_message_text = registration_message(chat.players)
-
-        # Обновляем сообщение о регистрации
-        try:
-            bot.edit_message_text(chat_id=chat_id, message_id=chat.button_id, text=updated_message_text, reply_markup=types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{chat_id}')]]), parse_mode="Markdown")
-        except Exception as e:
-            logging.error(f"Ошибка при обновлении сообщения регистрации: {e}")
 
 @bot.message_handler(commands=['stop'])
 def stop_game(message):
@@ -1422,6 +1383,7 @@ def stop_game(message):
         chat.game_running = False
         bot.send_message(chat_id, "🚫 *Игра остановлена\nадминистратором!*", parse_mode="Markdown")
         reset_game(chat)  # Сбрасываем игру
+        reset_roles(chat)
     else:
         reset_registration(chat_id)  # Сбрасываем регистрацию, если игра не началась
         bot.send_message(chat_id, "*🚫 Регистрация отменена\nадминистратором*", parse_mode="Markdown")
@@ -1751,7 +1713,7 @@ async def game_cycle(chat_id):
                         bot.send_message(chat.sheriff_check, '🕵️‍♂️  Комиссар Каттани навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
                         checked_player['fake_docs'] -= 1
                     else:
-                        bot.send_message(chat.sheriff_id, f"🕵️‍♂️ Комиссар Каттани выяснил, что {checked_player['name']} - {checked_player['role']}.")
+                        bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - {checked_player['role']}.")
                         bot.send_message(chat.sheriff_check, '🕵️‍♂️ Комиссар Каттани решил навестить тебя.', parse_mode="Markdown")
                     if chat.sergeant_id and chat.sergeant_id in chat.players:
                         sergeant_message = f"🕵️‍♂️ Комиссар Каттани проверил {checked_player['name']}, его роль - {checked_player['role']}."
@@ -1797,7 +1759,7 @@ async def game_cycle(chat_id):
             if not chat.game_running:
                 break
 
-            vote_end_time = time.time() + 30
+            vote_end_time = time.time() + 45
             while time.time() < vote_end_time:
                 if not chat.game_running:
                     break
@@ -1822,7 +1784,7 @@ async def game_cycle(chat_id):
             if check_game_end(chat, game_start_time):
                 break  # Если игра закончена, выходим из цикла
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(30)
 
             if not chat.game_running:
                 break
