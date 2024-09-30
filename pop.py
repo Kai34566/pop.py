@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
+bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -135,11 +135,6 @@ def list_btn(player_dict, user_id, player_role, text, action_type, message_id=No
         # Добавление остальных игроков в список
         if key != user_id and val['role'] != 'dead':
             players_btn.add(types.InlineKeyboardButton(val['name'], callback_data=f'{key}_{action_type}'))
-
-    # Добавление кнопки "Назад" для Комиссара
-    if player_role == '🕵️‍♂️ Комиссар Каттани':
-        logging.info("Добавляем кнопку 'Назад' для Комиссара")
-        players_btn.add(types.InlineKeyboardButton('Назад', callback_data=f'back_{player_role[0]}'))
 
     logging.info(f"Редактирование сообщения с кнопками для {player_role}.")
 
@@ -337,14 +332,14 @@ def confirm_vote(chat_id, player_id, player_name, confirm_votes, player_list):
     player_link = f"[{player_name}](tg://user?id={player_id})"
     
     # Используем кликабельную ссылку в сообщении
-    msg = bot.send_message(chat_id, f"Вы точно хотите изгонять {player_link}?", reply_markup=confirm_markup, parse_mode="Markdown")
+    msg = bot.send_message(chat_id, f"Вы точно хотите повесить {player_link}?", reply_markup=confirm_markup, parse_mode="Markdown")
     
     logging.info(f"Сообщение подтверждения голосования отправлено с message_id: {msg.message_id}")
-    return msg.message_id, f"Вы точно хотите изгонять {player_link}?"
+    return msg.message_id, f"Вы точно хотите повесить {player_link}?"
     
 def end_day_voting(chat):
     if not chat.vote_counts:  # Если нет голосов
-        bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не изгнав...", parse_mode="Markdown")
+        bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
         reset_voting(chat)  # Сброс голосования
 
         # Сбрасываем блокировку голосования у всех игроков
@@ -360,7 +355,7 @@ def end_day_voting(chat):
 
     # Проверка, если большинство проголосовало за "Пропустить"
     if 'skip' in chat.vote_counts and chat.vote_counts['skip'] == max_votes:
-        bot.send_message(chat.chat_id, "*Голосование завершено*\n🚷 Жители города решили никого не изгонять", parse_mode="Markdown")
+        bot.send_message(chat.chat_id, "*Голосование завершено*\n🚷 Жители города решили\nникого не повесить...", parse_mode="Markdown")
         reset_voting(chat)
 
         # Сбрасываем блокировку голосования у всех игроков
@@ -407,7 +402,7 @@ def end_day_voting(chat):
             return False  # Немедленно продолжаем игру
     else:
         # Если голоса равны или нет результата, выводим сообщение и немедленно продолжаем игру
-        bot.send_message(chat.chat_id, "**Голосование завершено**\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не изгнав...", parse_mode="Markdown")
+        bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
         reset_voting(chat)  # Сброс голосования
 
         # Сбрасываем блокировку голосования у всех игроков
@@ -472,7 +467,7 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None):
     if yes_votes > no_votes:
         # Делаем имя игрока кликабельным
         player_link = f"[{player_name}](tg://user?id={chat.confirm_votes['player_id']})"
-        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\nизгоняем {player_link}!"
+        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\n{player_link} повесили на дневном собрании!"
     else:
         result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\nМнения жителей разошлись...\nРазошлись и сами жители, так\nникого и не повесив..."
 
@@ -1097,7 +1092,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 4:
+    if len(chat.players) < 3:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1193,7 +1188,7 @@ def _start_game(chat_id):
         roles_assigned += 1
 
     # Назначение Любовницы
-    if roles_assigned < num_players and num_players >= 4:
+    if roles_assigned < num_players and num_players >= 7:
         logging.info(f"Назначение Любовницы: {players_list[roles_assigned][1]['name']}")
         change_role(players_list[roles_assigned][0], chat.players, '💃🏼 Любовница', 'Ты — 💃 Любовница!\n\nТы можешь соблазнить одного игрока и блокировать его действия на одну ночь.', chat)
         chat.lover_id = players_list[roles_assigned][0]
@@ -1337,8 +1332,6 @@ def handle_shop_actions(call):
         profile = player_profiles[user_id]  # Обновляем профиль из глобального словаря
         show_profile(call.message, message_id=call.message.message_id, user_id=user_id, user_name=user_name)
 
-
-
 @bot.message_handler(commands=['stop'])
 def stop_game(message):
     global game_tasks, registration_timers
@@ -1380,6 +1373,7 @@ def stop_game(message):
         reset_registration(chat_id)  # Сбрасываем регистрацию, если игра не началась
         bot.send_message(chat_id, "*🚫 Регистрация отменена\nадминистратором*", parse_mode="Markdown")
 
+
 @bot.message_handler(commands=['time'])
 def stop_registration_timer(message):
     global notification_timers, game_start_timers
@@ -1410,9 +1404,40 @@ def stop_registration_timer(message):
     # Если был остановлен хотя бы один таймер, выводим сообщение
     if timers_stopped:
         bot.send_message(chat_id, "⏱️ Таймер регистрации  остановлен")
+
+@bot.message_handler(commands=['leave'])
+def leave_game(message):
+    user_id = message.from_user.id
+    game_chat_id = message.chat.id  # Получаем идентификатор чата
+    
+    # Удаляем сообщение с командой
+    try:
+        bot.delete_message(chat_id=game_chat_id, message_id=message.message_id)
+    except Exception as e:
+        logging.error(f"Не удалось удалить сообщение: {e}")
+
+    chat = chat_list.get(game_chat_id)
+    
+    if chat and not chat.game_running and user_id in chat.players:
+        # Удаляем игрока из списка
+        chat.players.pop(user_id)
+        bot.send_message(user_id, "Вы вышли из игры.")
+        
+        # Обновляем сообщение о регистрации с кнопкой присоединиться
+        new_msg_text = registration_message(chat.players)
+        
+        # Создаем новую клавиатуру с кнопкой "Присоединиться"
+        new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
+        
+        try:
+            bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_msg_text, reply_markup=new_markup, parse_mode="Markdown")
+        except Exception as e:
+            logging.error(f"Ошибка обновления сообщения: {e}")
+    else:
+        bot.send_message(user_id, "Вы не зарегистрированы в этой игре или игра уже началась.")
     
 
-bot_username = "@RealMafiaTestBot"
+bot_username = "@nrlv_bot"
 
 def all_night_actions_taken(chat):
     for player in chat.players.values():
@@ -1591,6 +1616,8 @@ async def game_cycle(chat_id):
                 if hobo_target in chat.players:  # Проверка существования hobo_target
                     hobo_target_name = chat.players[hobo_target]['name']
                     hobo_visitors = []
+
+                    bot.send_message(hobo_target, f'🧙🏼‍♂️ Бомж выпросил у тебя бутылку этой ночью')
 
                     # Если мафия выбрала ту же цель, что и Бомж
                     if chat.dead and chat.dead[0] == hobo_target:
@@ -1924,13 +1951,6 @@ def callback_handler(call):
                 return
             time.sleep(1.5)
 
-        # Обработка действия "Назад"
-        if action == 'back':  # Назад к выбору действия Комиссара
-            if role == '🕵️‍♂️ Комиссар Каттани' and role.startswith('🕵'):  # Проверяем, содержит ли роль эмодзи Комиссара
-                chat.players[from_id]['action_taken'] = False  # Сбрасываем флаг action_taken
-                send_sheriff_menu(chat, from_id, message_id=call.message.message_id)  # Редактируем текущее сообщение
-            return
-
         # Проверка, что действия Комиссара доступны только ночью
         if role == '🕵️‍♂️ Комиссар Каттани':
             if not is_night:  # Если сейчас не ночь
@@ -2155,12 +2175,18 @@ def callback_handler(call):
                 if not is_night:  # Если сейчас не ночь
                     bot.answer_callback_query(call.id, text="Действия  доступны только ночью.")
                     return# Комиссар выбирает проверку
+                if chat.players[from_id].get('action_taken', False):  # Проверяем, сделал ли уже Комиссар действие
+                        bot.answer_callback_query(call.id, text="Вы уже сделали выбор этой ночью.")
+                        return
                 list_btn(chat.players, from_id, '🕵️‍♂️ Комиссар Каттани', 'Кого будем проверять?', 'ш', message_id=chat.last_sheriff_menu_id)
 
             elif action == 'shoot':
                 if not is_night:  # Если сейчас не ночь
                     bot.answer_callback_query(call.id, text="Действия  доступны только ночью.")
                     return# Комиссар выбирает стрельбу
+                if chat.players[from_id].get('action_taken', False):  # Проверяем, сделал ли уже Комиссар действие
+                        bot.answer_callback_query(call.id, text="Вы уже сделали выбор этой ночью.")
+                        return
                 list_btn(chat.players, from_id, '🕵️‍♂️ Комиссар Каттани', 'Кого будем стрелять?', 'с', message_id=chat.last_sheriff_menu_id)
 
     except Exception as e:
