@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
+bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -467,7 +467,7 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None):
     if yes_votes > no_votes:
         # Делаем имя игрока кликабельным
         player_link = f"[{player_name}](tg://user?id={chat.confirm_votes['player_id']})"
-        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\n{player_link} повесили на дневном собрании!"
+        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\n{player_link} _повесили на дневном собрании!_"
     else:
         result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\nМнения жителей разошлись...\nРазошлись и сами жители, так\nникого и не повесив..."
 
