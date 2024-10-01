@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
+bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -798,21 +798,27 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
         # Проверка наличия щита у игрока
         if victim_id in player_profiles and player_profiles[victim_id]['shield'] > 0:
             player_profiles[victim_id]['shield'] -= 1  # Уменьшаем количество щитов на 1
-            bot.send_message(chat.chat_id, f"⚔️ Кто-то из жителей был атакован,\nно щит спас его!")
-            # Отправляем личное сообщение игроку о спасении
-            bot.send_message(victim_id, "⚔️ Тебя пытались убить, но ты использовал щит и был спасён!")
-            continue  # Пропускаем смерть игрока, так как он спасен щитом
+            roles_failed = ", ".join(roles_involved)
+            bot.send_message(chat.chat_id, f"⚔️ Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
+            # Отправляем личное сообщение игроку о спасении щитом
+            bot.send_message(victim_id, "⚔️ Тебя пытались убить, но щит спас тебя!")
+            continue
+        
 
-        # Проверка Счастливчика: 50% шанс выжить, если его пытались убить
         if victim['role'] == '🤞 Счастливчик':
             if random.random() < 0.5:
-                bot.send_message(chat.chat_id, f'🤞 {victim["name"]} повезло! Он выжил этой ночью.')
-                continue  # Пропускаем дальнейшую обработку для Счастливчика, так как он выжил
+                roles_failed = ", ".join(roles_involved)
+                bot.send_message(chat.chat_id, f'🤞 Кому-то сегодня ночью повезло\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
+                bot.send_message(victim_id, "🤞 Кто-то пытался тебя убить, но\nсегодня тебе повезло!")
+                continue
 
         # Если Доктор спас игрока
         if chat.doc_target and chat.doc_target == victim_id:
-            bot.send_message(chat.doc_target, '👨🏼‍⚕️ Доктор вылечил тебя!', parse_mode="Markdown")
-            continue  # Пропускаем это убийство, так как жертва спасена
+            roles_failed = ", ".join(roles_involved)
+            bot.send_message(chat.chat_id, f'👨🏼‍⚕️ *Доктор* кого-то спас этой ночью\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
+            # Отправляем личное сообщение спасённому игроку
+            bot.send_message(chat.doc_target, '👨🏼‍⚕️ *Доктор* вылечил тебя!', parse_mode="Markdown")
+            continue
 
         # Проверка Смертника: если он убит, забирает с собой убийцу
         if victim['role'] == '💣 Смертник':
@@ -837,7 +843,7 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
         victim_link = f"[{victim['name']}](tg://user?id={victim_id})"
         role_list = ", ".join(roles_involved)
         combined_message += f"Сегодня был жестоко убит *{victim['role']}* {victim_link}...\n"
-        combined_message += f"ходят слухи, что у него был визит от {role_list}\n\n"
+        combined_message += f"Ходят слухи, что у него был визит от {role_list}\n\n"
 
         # Удаление игрока из игры
         chat.remove_player(victim_id, killed_by='night')
@@ -1092,7 +1098,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1691,15 +1697,8 @@ async def game_cycle(chat_id):
 
             if chat.sheriff_shoot and chat.sheriff_shoot in chat.players:
                shooted_player = chat.players[chat.sheriff_shoot]
-               if shooted_player['role'] == '🍀 Счастливчик' and random.random() < 0.5:
-                   bot.send_message(chat_id, f"🏹 Комиссар стрелял в {shooted_player['name']}, но ему повезло.")
-               elif chat.doc_target and chat.doc_target == chat.sheriff_shoot:
-                   bot.send_message(chat.doc_target, '👨🏼‍⚕️ Доктор вылечил тебя!', parse_mode="Markdown")
-                   chat.sheriff_shoot = None  # Доктор спас жертву
-               else:
-                   killed_by_sheriff = (chat.sheriff_shoot, chat.players[chat.sheriff_shoot])
-                   chat.remove_player(chat.sheriff_shoot, killed_by='night')  # Убит ночью
-                   chat.sheriff_shoot = None
+               killed_by_sheriff = (chat.sheriff_shoot, chat.players[chat.sheriff_shoot])
+               chat.sheriff_shoot = None
 
             process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber, killed_by_maniac)
 
