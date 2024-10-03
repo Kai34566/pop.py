@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
+bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -26,6 +26,7 @@ vote_timestamps = {}
 registration_lock = threading.Lock()
 
 player_profiles = {}
+sent_messages = {}
 
 is_night = False
 
@@ -320,8 +321,13 @@ def add_player(chat, user_id, user_name, player_number):
     get_or_create_profile(user_id, user_name)
     
     chat.players[user_id] = {'name': user_name, 'role': 'ждет', 'skipped_actions': 0, 'status': 'alive', 'number': player_number}
-    
+
 def confirm_vote(chat_id, player_id, player_name, confirm_votes, player_list):
+    # Проверяем, было ли уже отправлено сообщение для этого игрока
+    if player_id in sent_messages:
+        logging.info(f"Сообщение подтверждения для {player_name} уже отправлено.")
+        return sent_messages[player_id], f"Вы точно хотите повесить {player_name}?"
+
     confirm_markup = types.InlineKeyboardMarkup(row_width=2)  # Устанавливаем две кнопки в строке
     confirm_markup.add(
         types.InlineKeyboardButton(f"👍 {confirm_votes['yes']}", callback_data=f"confirm_{player_id}_yes"),
@@ -335,7 +341,11 @@ def confirm_vote(chat_id, player_id, player_name, confirm_votes, player_list):
     msg = bot.send_message(chat_id, f"Вы точно хотите повесить {player_link}?", reply_markup=confirm_markup, parse_mode="Markdown")
     
     logging.info(f"Сообщение подтверждения голосования отправлено с message_id: {msg.message_id}")
-    return msg.message_id, f"Вы точно хотите повесить {player_link}?"
+    
+    # Сохраняем message_id в sent_messages
+    sent_messages[player_id] = msg.message_id
+    
+    return msg.message_id, f"Вы точно хотите повесить {player_name}?"
     
 def end_day_voting(chat):
     if not chat.vote_counts:  # Если нет голосов
@@ -503,6 +513,9 @@ def reset_voting(chat):
     # Сбрасываем флаг голосования у каждого игрока
     for player in chat.players.values():
         player['has_voted'] = False
+
+    # Сбрасываем отправленные сообщения
+    sent_messages.clear()  # Очищаем словарь sent_messages
 
 def handle_night_action(callback_query, chat, player_role):
     player_id = callback_query.from_user.id
@@ -1101,7 +1114,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 4:
+    if len(chat.players) < 3:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1926,6 +1939,9 @@ def callback_handler(call):
 
     if player['role'] == 'dead':
         bot.answer_callback_query(call.id, text="⛔️ ты мертв!")
+        return
+
+    if chat.confirm_votes.get('player_id') == from_id:
         return
 
     # Проверка блокировки голосования, если игрока выбрала любовница
