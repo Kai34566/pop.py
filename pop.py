@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
+bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
