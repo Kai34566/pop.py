@@ -172,15 +172,55 @@ def night_message(players):
 def day_message(players):
     # Сортируем игроков по номеру перед выводом
     sorted_players = sorted(players.items(), key=lambda item: item[1]['number'])
-    living_players = [f"{player['number']}. [{player['name']}](tg://user?id={player_id})" for player_id, player in sorted_players if player['role'] != 'dead']
+    
+    # Список живых игроков
+    living_players = [f"{player['number']}. [{player['name']}](tg://user?id={player_id})"
+                      for player_id, player in sorted_players if player['role'] != 'dead']
     player_list = '\n'.join(living_players)
     
-    # Подсчитываем количество ролей среди живых игроков
+    # Подсчёт ролей среди живых игроков
     roles = [player['role'] for player_id, player in sorted_players if player['role'] != 'dead']
-    role_counts = {role: roles.count(role) for role in set(roles)}
-    roles_text = ', '.join([f"{role} ({count})" if count > 1 else f"{role}" for role, count in role_counts.items()])
+    
+    # Категоризация ролей
+    peaceful_roles = ['👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '🕵️‍♂️ Комиссар Каттани', '🤞 Счастливчик', '💣 Смертник', '💃🏼 Любовница', '👮🏼 Сержант', '👨🏼‍🌾 Мирный житель']
+    mafia_roles = ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '👨🏼‍💼 Адвокат']
+    maniac_roles = ['🔪 Маньяк', '🤦‍♂️ Самоубийца']
 
-    return f"*Живые игроки:*\n{player_list}\n\n*Из них*:\n{roles_text}\n\n👥 Всего: *{len(living_players)}*\n\nСейчас самое время обсудить результаты ночи, разобраться в причинах и следствиях…"
+    # Подсчет количества ролей среди живых
+    role_counts = {}
+    for role in roles:
+        if role not in role_counts:
+            role_counts[role] = 1
+        else:
+            role_counts[role] += 1
+
+    # Формирование строк с ролями и количеством игроков
+    result_lines = []
+
+    # Обработка мирных ролей
+    peaceful_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in peaceful_roles]
+    if peaceful_list:
+        result_lines.append(f"👨🏼 {len(peaceful_list)}: {', '.join(peaceful_list)}")
+
+    # Обработка ролей мафии
+    mafia_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in mafia_roles]
+    if mafia_list:
+        result_lines.append(f"🤵🏼 {len(mafia_list)}: {', '.join(mafia_list)}")
+
+    # Обработка маньяка/самоубийцы
+    maniac_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in maniac_roles]
+    if maniac_list:
+        result_lines.append(f"👹 {len(maniac_list)}: {', '.join(maniac_list)}")
+
+    # Общее количество живых игроков
+    total_count = len(living_players)
+
+    # Финальное сообщение
+    final_message = (f"*Живые игроки:*\n{player_list}\n\n"
+                     f"*Из них:*\n" + '\n'.join(result_lines) + f"\n\n👥 Всего: {total_count}\n\n"
+                     "Сейчас самое время обсудить результаты ночи, разобраться в причинах и следствиях…")
+
+    return final_message
     
 def players_alive(player_dict, phase):
     if phase == "registration":
@@ -1114,7 +1154,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
