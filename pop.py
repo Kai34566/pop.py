@@ -1471,7 +1471,7 @@ def stop_registration_timer(message):
 
     # Если был остановлен хотя бы один таймер, выводим сообщение
     if timers_stopped:
-        bot.send_message(chat_id, "⏰ Таймер регистрации остановлен")
+        bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную через команду /start.", parse_mode="Markdown")
 
 @bot.message_handler(commands=['leave'])
 def leave_game(message):
