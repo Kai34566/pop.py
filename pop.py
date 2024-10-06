@@ -199,28 +199,27 @@ def day_message(players):
 
     # Обработка мирных ролей
     peaceful_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in peaceful_roles]
+    peaceful_count = sum(role_counts[role] for role in peaceful_roles if role in role_counts)
     if peaceful_list:
-        result_lines.append(f"👨🏼 {len(peaceful_list)}: {', '.join(peaceful_list)}")
+        result_lines.append(f"👨🏼 {peaceful_count}: {', '.join(peaceful_list)}")
 
-    # Обработка ролей мафии
+    # Обработка мафиозных ролей
     mafia_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in mafia_roles]
+    mafia_count = sum(role_counts[role] for role in mafia_roles if role in role_counts)
     if mafia_list:
-        result_lines.append(f"🤵🏼 {len(mafia_list)}: {', '.join(mafia_list)}")
+        result_lines.append(f"🤵🏼 {mafia_count}: {', '.join(mafia_list)}")
 
-    # Обработка маньяка/самоубийцы
+    # Обработка маньяков и самоубийц
     maniac_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in maniac_roles]
+    maniac_count = sum(role_counts[role] for role in maniac_roles if role in role_counts)
     if maniac_list:
-        result_lines.append(f"👹 {len(maniac_list)}: {', '.join(maniac_list)}")
+        result_lines.append(f"💀 {maniac_count}: {', '.join(maniac_list)}")
 
-    # Общее количество живых игроков
-    total_count = len(living_players)
-
-    # Финальное сообщение
-    final_message = (f"*Живые игроки:*\n{player_list}\n\n"
-                     f"*Из них:*\n" + '\n'.join(result_lines) + f"\n\n👥 Всего: {total_count}\n\n"
-                     "Сейчас самое время обсудить результаты ночи, разобраться в причинах и следствиях…")
-
-    return final_message
+    # Формирование финального текста
+    return (f"*Живые игроки:*\n{player_list}\n\n"
+            f"*Из них*:\n" + '\n'.join(result_lines) + 
+            f"\n\n👥 Всего: *{len(living_players)}*\n\n"
+            "Сейчас самое время обсудить результаты ночи, разобраться в причинах и следствиях…")
     
 def players_alive(player_dict, phase):
     if phase == "registration":
