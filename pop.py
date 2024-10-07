@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7440608188:AAEAmMqPVs2vo9ijbyadX1nl9OGArvcpbzc")
+bot = telebot.TeleBot("7607806051:AAH23N4NU_w9qBIlIbMVMnD-YGEbm6_-lIU")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -297,7 +297,7 @@ def notify_one_minute_left(chat_id):
             join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
             item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
             join_btn.add(item1)
-            bot.send_message(chat_id, '❗️Регистрация закончится через 59 сек.', reply_markup=join_btn)
+            bot.send_message(chat_id, '⏰ Регистрация закончится через *59 сек.*', reply_markup=join_btn, parse_mode="Markdown")
 
 def start_game_with_delay(chat_id):
     global notification_timers, game_start_timers
@@ -878,17 +878,17 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
                 if killer_role in ['🤵🏻‍♂️ Дон', '🕵️‍♂️ Комиссар Каттани', '🔪 Маньяк']:
                     if killer_role == '🤵🏻‍♂️ Дон' and chat.don_id:
                         don_player_link = f"[{chat.players[chat.don_id]['name']}](tg://user?id={chat.don_id})"
-                        combined_message += f"Сегодня был жестоко убит 🤵🏻‍♂️ *Дон* {don_player_link}...\nХодят слухи, что был визит от 💣 *Смертник*\n\n"
+                        combined_message += f"Сегодня был жестоко убит 🤵🏻‍♂️ *Дон* {don_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
                         chat.remove_player(chat.don_id, killed_by='night')
 
                     if killer_role == '🕵️‍♂️ Комиссар Каттани' and chat.sheriff_id:
                         sheriff_player_link = f"[{chat.players[chat.sheriff_id]['name']}](tg://user?id={chat.sheriff_id})"
-                        combined_message += f"Сегодня был жестоко убит 🕵️‍♂️ *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что был визит от 💣 *Смертник*\n\n"
+                        combined_message += f"Сегодня был жестоко убит 🕵️‍♂️ *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
                         chat.remove_player(chat.sheriff_id, killed_by='night')
 
                     if killer_role == '🔪 Маньяк' and chat.maniac_id:
                         maniac_player_link = f"[{chat.players[chat.maniac_id]['name']}](tg://user?id={chat.maniac_id})"
-                        combined_message += f"Сегодня был жестоко убит 🔪 *Маньяк* {maniac_player_link}...\nХодят слухи, что был визит от 💣 *Смертник*\n\n"
+                        combined_message += f"Сегодня был жестоко убит 🔪 *Маньяк* {maniac_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
                         chat.remove_player(chat.maniac_id, killed_by='night')
 
         # Формируем сообщение о смерти
@@ -1471,7 +1471,7 @@ def stop_registration_timer(message):
 
     # Если был остановлен хотя бы один таймер, выводим сообщение
     if timers_stopped:
-        bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную через команду /start.", parse_mode="Markdown")
+        bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную через команду /start_game.", parse_mode="Markdown")
 
 @bot.message_handler(commands=['leave'])
 def leave_game(message):
