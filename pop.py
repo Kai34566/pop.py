@@ -1042,18 +1042,18 @@ def start_message(message):
 
     # Клавиатура для других действий, если команда /start без параметров
     keyboard = types.InlineKeyboardMarkup()
-    join_chat_btn = types.InlineKeyboardButton('🎲 Войти в чат', callback_data='join_chat')
+    join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
     keyboard.add(join_chat_btn)
     
-    news_btn = types.InlineKeyboardButton('📰 Новости', url='https://t.me/RealMafiaNews')
+    news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/CityMafiaNews')
     keyboard.add(news_btn)
 
     bot_username = bot.get_me().username
     add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
-    add_to_group_btn = types.InlineKeyboardButton('🤵🏻 Добавить игру в свой чат', url=add_to_group_url)
+    add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
     keyboard.add(add_to_group_btn)
 
-    bot.send_message(chat_id, 'Привет! Я ведущий бот по игре 🤵🏻 Мафия. Начнем играть?', reply_markup=keyboard)
+    bot.send_message(chat_id, '*Привет!*\nЯ бот-ведущий для игры в 🤵🏻 *Мафию.*\nДобавь меня в чат, назначь администратором и начни играть бесплатно', reply_markup=keyboard, parse_mode="Markdown")
     
 @bot.callback_query_handler(func=lambda call: call.data == 'join_chat')
 def join_chat_callback(call):
@@ -1063,7 +1063,7 @@ def join_chat_callback(call):
     bot.answer_callback_query(call.id, "Выберите чат")
     # Создаем клавиатуру для кнопки "🛠️ Тестовый"
     test_button = types.InlineKeyboardMarkup()
-    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/RealMafiaChat1')
+    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/CityMafiaChat')
     test_button.add(test_btn)
 
     # Отправляем сообщение с кнопкой "🛠️ Тестовый"
@@ -1769,7 +1769,7 @@ async def game_cycle(chat_id):
 
             # Проверка, убит ли кто-то ночью
             if killed_by_mafia is None and killed_by_sheriff is None and killed_by_bomber is None and not killed_by_maniac:
-               bot.send_message(chat_id, '🌞 Удивительно! Но сегодня все живы!🤷')
+               bot.send_message(chat_id, '🤔 _Странно, этой ночью все остались в живых..._', parse_mode="Markdown")
 
             logging.info(f"Цель Комиссара: {chat.sheriff_check}, Цель адвоката: {chat.lawyer_target}")
 
@@ -1817,8 +1817,8 @@ async def game_cycle(chat_id):
             # Начало голосования днем
             is_voting_time = True  # Включаем время голосования
             chat.vote_counts.clear()  # Сброс голосов перед началом нового голосования
-            vote_msg = bot.send_message(chat.chat_id, '*Пришло время определить и наказать виноватых*\nГолосование продлится 45 секунд', reply_markup=types.InlineKeyboardMarkup([
-                [types.InlineKeyboardButton('🗳️ Голосование', url=f'https://t.me/{bot.get_me().username}')]
+            vote_msg = bot.send_message(chat.chat_id, '*Пришло время определить и наказать виноватых, кто же отправится на виселицу?*\nГолосование продлится 45 секунд', reply_markup=types.InlineKeyboardMarkup([
+                [types.InlineKeyboardButton('🗳 Голосование', url=f'https://t.me/{bot.get_me().username}')]
             ]), parse_mode="Markdown")
             chat.vote_message_id = vote_msg.message_id
 
