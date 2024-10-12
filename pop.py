@@ -157,7 +157,7 @@ def registration_message(players):
     if players:
         player_names = [f"[{player['name']}](tg://user?id={player_id})" for player_id, player in players.items()]
         player_list = ', '.join(player_names)
-        return f"*Ведётся набор в игру*\n{player_list}\n_{len(player_names)} игроков_"
+        return f"*Ведётся набор в игру*\n{player_list}\n_{len(player_names)} чел_"
     else:
         return "*Ведётся набор в игру*\n_Зарегистрированных нет_"
 
@@ -219,7 +219,7 @@ def day_message(players):
     return (f"*Живые игроки:*\n{player_list}\n\n"
             f"*Из них*:\n" + '\n'.join(result_lines) + 
             f"\n\n👥 Всего: *{len(living_players)}*\n\n"
-            "Сейчас самое время обсудить результаты ночи, разобраться в причинах и следствиях…")
+            "Теперь пришло время обсудить сегодняшние события, пытаясь выяснить причины и последствия...")
     
 def players_alive(player_dict, phase):
     if phase == "registration":
@@ -470,15 +470,16 @@ def handle_confirm_vote(chat):
     if yes_votes == no_votes:
         # Если подтверждающее голосование завершилось равными голосами, выводим результат и продолжаем игру
         send_voting_results(chat, yes_votes, no_votes)
-        disable_vote_buttons(chat)  # Добавляем вызов удаления кнопок
+        disable_vote_buttons(chat)  # Удаляем кнопки
     elif yes_votes > no_votes:
         # Если больше голосов "за", игрок казнен
         dead_id = chat.confirm_votes['player_id']
         if dead_id in chat.players:
             dead = chat.players[dead_id]
             disable_vote_buttons(chat)
-            send_voting_results(chat, yes_votes, no_votes, dead['name'])
-            bot.send_message(chat.chat_id, f'[{dead["name"]}](tg://user?id={dead_id}) был {dead["role"]}', parse_mode="Markdown")
+            # Передаем информацию о казненном игроке и его роли
+            send_voting_results(chat, yes_votes, no_votes, dead['name'], dead['role'])  
+
             chat.remove_player(dead_id)
             
             # Проверка, был ли этот игрок Доном
@@ -512,16 +513,23 @@ def disable_vote_buttons(chat):
     except Exception as e:
         logging.error(f"Не удалось заблокировать кнопки для голосования: {e}")
 
-def send_voting_results(chat, yes_votes, no_votes, player_name=None):
+def send_voting_results(chat, yes_votes, no_votes, player_name=None, player_role=None):
     if yes_votes > no_votes:
         # Делаем имя игрока кликабельным
         player_link = f"[{player_name}](tg://user?id={chat.confirm_votes['player_id']})"
-        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\n{player_link} _повесили на дневном собрании!_"
+        # Добавляем информацию о роли
+        result_text = (f"Результаты голосования:\n"
+                       f"👍 {yes_votes} | 👎 {no_votes}\n\n"
+                       f"_Сегодня был повешен_ {player_link}\n"
+                       f"Он был {player_role}..")  # Добавляем информацию о роли
     else:
-        result_text = f"Результаты голосования:\n👍 {yes_votes} | 👎 {no_votes}\n\nМнения жителей разошлись...\nРазошлись и сами жители, так\nникого и не повесив..."
+        result_text = (f"Результаты голосования:\n"
+                       f"👍 {yes_votes} | 👎 {no_votes}\n\n"
+                       f"Мнения жителей разошлись...\n"
+                       f"Разошлись и сами жители, так\n"
+                       f"никого и не повесив...")
 
     bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
-
 
 def send_sheriff_menu(chat, sheriff_id, callback_query=None, message_id=None):
     if not is_night:
@@ -1744,7 +1752,7 @@ async def game_cycle(chat_id):
                 else:
                     player['action_taken'] = False
 
-            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'☀️ *День {day_count}*\nСолнце всходит, подсушивая на тротуарах пролитую ночью кровь...', parse_mode="Markdown")
+            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'☀️ *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
 
             await asyncio.sleep(4)
 
@@ -2097,7 +2105,7 @@ def callback_handler(call):
                     chat.players[from_id]['action_taken'] = True  # Отмечаем, что Комиссар сделал действие
                     if chat.last_sheriff_menu_id:
                         try:
-                            bot.edit_message_text(chat_id=from_id, message_id=chat.last_sheriff_menu_id, text=f"Ты выбрал проверять {chat.players[target_id]['name']}")
+                            bot.edit_message_text(chat_id=from_id, message_id=chat.last_sheriff_menu_id, text=f"Ты пошёл проверять {chat.players[target_id]['name']}")
                         except Exception as e:
                             logging.error(f"Ошибка при обновлении последнего меню Комиссара: {e}")
 
@@ -2124,7 +2132,7 @@ def callback_handler(call):
                     chat.players[from_id]['action_taken'] = True  # Отмечаем, что Комиссар сделал действие
                     if chat.last_sheriff_menu_id:
                         try:
-                            bot.edit_message_text(chat_id=from_id, message_id=chat.last_sheriff_menu_id, text=f"Ты выбрал стрелять в {chat.players[target_id]['name']}")
+                            bot.edit_message_text(chat_id=from_id, message_id=chat.last_sheriff_menu_id, text=f"Ты пошёл убивать {chat.players[target_id]['name']}")
                         except Exception as e:
                             logging.error(f"Ошибка при обновлении последнего меню Комиссара: {e}")
 
@@ -2147,7 +2155,7 @@ def callback_handler(call):
                         return
 
                     victim_name = chat.players[target_id]['name']
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) {victim_name}")
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты проголосвал за {victim_name}")
 
                     if from_id not in chat.mafia_votes:
                         chat.mafia_votes[from_id] = target_id
@@ -2170,7 +2178,7 @@ def callback_handler(call):
                     if not handle_night_action(call, chat, player_role):
                         return
 
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Вы выбрали лечить {chat.players[target_id]['name']}")
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал лечить {chat.players[target_id]['name']}")
                     
                     if target_id == from_id:
                         if player.get('self_healed', False):  
@@ -2194,7 +2202,7 @@ def callback_handler(call):
                         return
                     chat.previous_lover_target_id = chat.lover_target_id
                     chat.lover_target_id = target_id
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты выбрал(а) провести ночь с {chat.players[chat.lover_target_id]['name']}")
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=f"Ты отправилась спать с {chat.players[chat.lover_target_id]['name']}")
                     bot.send_message(chat.chat_id, "💃🏼 *Любовница* уже ждёт кого-то в гости...", parse_mode="Markdown")
                     logging.info(f"Предыдущая цель любовницы обновлена: {chat.previous_lover_target_id}")
                     logging.info(f"Текущая цель любовницы: {chat.lover_target_id}")
