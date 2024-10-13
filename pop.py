@@ -688,11 +688,11 @@ def check_game_end(chat, game_start_time):
     seconds = int(game_duration % 60)
 
     # Формируем сообщение с результатами
-    result_text = (f"*Игра окончена!*\n"
+    result_text = (f"*Игра окончена!🙂*\n"
                    f"Победили: *{winning_team}*\n\n"
                    f"*Победители:*\n" + "\n".join(winners) + "\n\n"
                    f"*Остальные участники:*\n" + "\n".join(remaining_players + all_dead_players) + "\n\n"
-                   f"⏱️ Игра длилась: {minutes} мин. {seconds} сек.")
+                   f"⏰ Игра длилась: {minutes} мин. {seconds} сек.")
 
     bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
 
