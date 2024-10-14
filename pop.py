@@ -13,7 +13,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
+bot = telebot.TeleBot("7597487001:AAFmF8otomtH9s23guQurFOM2B6aZbZywds")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -369,8 +369,8 @@ def confirm_vote(chat_id, player_id, player_name, confirm_votes, player_list):
 
     confirm_markup = types.InlineKeyboardMarkup(row_width=2)  # Устанавливаем две кнопки в строке
     confirm_markup.add(
-        types.InlineKeyboardButton(f"👍 {confirm_votes['yes']}", callback_data=f"confirm_{player_id}_yes"),
-        types.InlineKeyboardButton(f"👎 {confirm_votes['no']}", callback_data=f"confirm_{player_id}_no")
+        types.InlineKeyboardButton(f"👍🏼 {confirm_votes['yes']}", callback_data=f"confirm_{player_id}_yes"),
+        types.InlineKeyboardButton(f"👎🏼 {confirm_votes['no']}", callback_data=f"confirm_{player_id}_no")
     )
 
     # Создаем кликабельную ссылку на игрока
@@ -384,7 +384,7 @@ def confirm_vote(chat_id, player_id, player_name, confirm_votes, player_list):
     # Сохраняем message_id в sent_messages
     sent_messages[player_id] = msg.message_id
     
-    return msg.message_id, f"Вы точно хотите повесить {player_name}?"
+    return msg.message_id, f"Вы точно хотите повесить {player_link}?"
     
 def end_day_voting(chat):
     if not chat.vote_counts:  # Если нет голосов
@@ -519,12 +519,12 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None, player_role
         player_link = f"[{player_name}](tg://user?id={chat.confirm_votes['player_id']})"
         # Добавляем информацию о роли
         result_text = (f"Результаты голосования:\n"
-                       f"👍 {yes_votes} | 👎 {no_votes}\n\n"
+                       f"👍🏼 {yes_votes} | 👎🏼 {no_votes}\n\n"
                        f"_Сегодня был повешен_ {player_link}\n"
                        f"Он был {player_role}..")  # Добавляем информацию о роли
     else:
         result_text = (f"Результаты голосования:\n"
-                       f"👍 {yes_votes} | 👎 {no_votes}\n\n"
+                       f"👍🏼 {yes_votes} | 👎🏼 {no_votes}\n\n"
                        f"Мнения жителей разошлись...\n"
                        f"Разошлись и сами жители, так\n"
                        f"никого и не повесив...")
@@ -653,8 +653,8 @@ def check_game_end(chat, game_start_time):
     for player_id, player in chat.players.items():
         if f"[{player['name']}](tg://user?id={player_id}) - {player['role']}" in winners:
             # Начисление 20 евро победителям
-            player_profiles[player_id]['euro'] += 0
-            bot.send_message(player_id, "*Игра окончена*!", parse_mode="Markdown")
+            player_profiles[player_id]['euro'] += 10
+            bot.send_message(player_id, "*Игра окончена*!\nВы получили 10 💶", parse_mode="Markdown")
     
     # Если самоубийца выиграл
     if suicide_player:
@@ -680,7 +680,7 @@ def check_game_end(chat, game_start_time):
     # Отправляем проигравшим сообщение
     for player_id in chat.players:
         if player_id not in winners_ids and chat.players[player_id]['status'] != 'left':
-            bot.send_message(player_id, "*Игра окончена*!", parse_mode="Markdown")
+            bot.send_message(player_id, "*Игра окончена*\nВы получили 0 💶!", parse_mode="Markdown")
     
     # Подсчитываем время игры
     game_duration = time.time() - game_start_time
@@ -688,7 +688,7 @@ def check_game_end(chat, game_start_time):
     seconds = int(game_duration % 60)
 
     # Формируем сообщение с результатами
-    result_text = (f"*Игра окончена!🙂*\n"
+    result_text = (f"*Игра окончена! 🙂*\n"
                    f"Победили: *{winning_team}*\n\n"
                    f"*Победители:*\n" + "\n".join(winners) + "\n\n"
                    f"*Остальные участники:*\n" + "\n".join(remaining_players + all_dead_players) + "\n\n"
@@ -704,7 +704,7 @@ def check_game_end(chat, game_start_time):
             player_id = int(dead_player.split('=')[1].split(')')[0])
         
         try:
-            bot.send_message(player_id, "*Игра окончена*!", parse_mode="Markdown")
+            bot.send_message(player_id, "*Игра окончена*!\nВы получили 0 💶", parse_mode="Markdown")
         except Exception as e:
             logging.error(f"Не удалось отправить сообщение убитому игроку {player_id}: {e}")
 
@@ -1053,7 +1053,7 @@ def start_message(message):
     join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
     keyboard.add(join_chat_btn)
     
-    news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/CityMafiaNews')
+    news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FenemyMafiaNews')
     keyboard.add(news_btn)
 
     bot_username = bot.get_me().username
@@ -1071,7 +1071,7 @@ def join_chat_callback(call):
     bot.answer_callback_query(call.id, "Выберите чат")
     # Создаем клавиатуру для кнопки "🛠️ Тестовый"
     test_button = types.InlineKeyboardMarkup()
-    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/CityMafiaChat')
+    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/FenemyMafiaChat')
     test_button.add(test_btn)
 
     # Отправляем сообщение с кнопкой "🛠️ Тестовый"
@@ -2055,8 +2055,8 @@ def callback_handler(call):
 
             confirm_markup = types.InlineKeyboardMarkup()
             confirm_markup.add(
-                types.InlineKeyboardButton(f"👍 {chat.confirm_votes['yes']}", callback_data=f"confirm_{player_id}_yes"),
-                types.InlineKeyboardButton(f"👎 {chat.confirm_votes['no']}", callback_data=f"confirm_{player_id}_no")
+                types.InlineKeyboardButton(f"👍🏼 {chat.confirm_votes['yes']}", callback_data=f"confirm_{player_id}_yes"),
+                types.InlineKeyboardButton(f"👎🏼 {chat.confirm_votes['no']}", callback_data=f"confirm_{player_id}_no")
             )
 
             # Проверяем, изменилась ли разметка перед обновлением
