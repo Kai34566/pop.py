@@ -1197,9 +1197,11 @@ def _start_game(chat_id):
     mafia_assigned = 0
 
     # Установим статус alive для всех игроков перед началом игр
+    numbers = list(range(1, num_players + 1))
+    shuffle(numbers)
     for i, (player_id, player_info) in enumerate(players_list):
         player_info['status'] = 'alive'
-        player_info['number'] = i + 1  # Присваиваем уникальный номер игроку
+        player_info['number'] = numbers[i]  # Присваиваем случайный уникальный номер
     # Назначение Дона
     logging.info(f"Назначение Дона: {players_list[0][1]['name']}")
     change_role(players_list[0][0], chat.players, '🤵🏻‍♂️ Дон', 'Ты — 🤵🏻‍♂️ Дон!\n\nТебе решать кто не проснётся этой ночью...', chat)
