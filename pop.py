@@ -285,6 +285,20 @@ def notify_mafia_and_don(chat):
         if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
             bot.send_message(player_id, message, parse_mode='Markdown')
 
+def notify_twenty_nine_seconds_left(chat_id):
+    global registration_timers
+    if chat_id in registration_timers:
+        del registration_timers[chat_id]  # Удаляем таймер из словаря, если он сработал
+    if chat_id in chat_list:
+        chat = chat_list[chat_id]
+        if not chat.game_running and chat.button_id:
+            join_btn = types.InlineKeyboardMarkup()
+            bot_username = bot.get_me().username
+            join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
+            item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
+            join_btn.add(item1)
+            bot.send_message(chat_id, '⏰ Регистрация закончится через *29 сек.*', reply_markup=join_btn, parse_mode="Markdown")
+
 def notify_one_minute_left(chat_id):
     global registration_timers
     if chat_id in registration_timers:
@@ -298,6 +312,10 @@ def notify_one_minute_left(chat_id):
             item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
             join_btn.add(item1)
             bot.send_message(chat_id, '⏰ Регистрация закончится через *59 сек.*', reply_markup=join_btn, parse_mode="Markdown")
+            
+            # Запускаем таймер на уведомление за 29 секунд
+            notification_timers[chat_id] = threading.Timer(30.0, lambda: notify_twenty_nine_seconds_left(chat_id))
+            notification_timers[chat_id].start()
 
 def start_game_with_delay(chat_id):
     global notification_timers, game_start_timers
@@ -1472,7 +1490,7 @@ def stop_registration_timer(message):
 
     # Если был остановлен хотя бы один таймер, выводим сообщение
     if timers_stopped:
-        bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную 🛠️", parse_mode="Markdown")
+        bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную через команду /start.", parse_mode="Markdown")
 
 
 # Команда /next для отправки уведомления о новой регистрации в чате
