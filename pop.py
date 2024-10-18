@@ -22,7 +22,7 @@ registration_timers = {}
 game_start_timers = {}
 # Словарь для хранения времени последнего нажатия кнопки каждым игроком
 vote_timestamps = {}
-
+next_players = {}
 registration_lock = threading.Lock()
 
 player_profiles = {}
@@ -992,162 +992,88 @@ def process_mafia_action(chat):
 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    # Проверяем, что команда пришла из приватного чата
-    if message.chat.type != 'private':
-        return
-
     user_id = message.from_user.id
     chat_id = message.chat.id
 
-    user_name = message.from_user.first_name if message.from_user.first_name else "Пользователь"
-    
-    get_or_create_profile(user_id, user_name)
-    
-    text = message.text
+    if message.chat.type == 'private':
+        # Логика для приватного чата
+        user_name = message.from_user.first_name if message.from_user.first_name else "Пользователь"
+        
+        get_or_create_profile(user_id, user_name)
+        
+        text = message.text
 
-    # Проверяем, есть ли параметр после команды /start
-    if len(text.split()) > 1:
-        param = text.split()[1]
-        if param.startswith("join_"):
-            game_chat_id = int(param.split('_')[1])
-            chat = chat_list.get(game_chat_id)
-            if chat:
-                try:
-                    # Проверка прав пользователя в группе
-                    chat_member = bot.get_chat_member(game_chat_id, user_id)
+        # Проверяем, есть ли параметр после команды /start
+        if len(text.split()) > 1:
+            param = text.split()[1]
+            if param.startswith("join_"):
+                game_chat_id = int(param.split('_')[1])
+                chat = chat_list.get(game_chat_id)
+                if chat:
+                    try:
+                        # Проверка прав пользователя в группе
+                        chat_member = bot.get_chat_member(game_chat_id, user_id)
 
-                    # Проверка, может ли пользователь отправлять сообщения
-                    if chat_member.status in ['member', 'administrator', 'creator'] and (chat_member.can_send_messages is None or chat_member.can_send_messages):
-                        if chat.game_running:
-                            bot.send_message(user_id, "🚫 Не удалось присоединиться игра уже началась!")
-                        elif not chat.button_id:
-                            bot.send_message(user_id, "🚫 Не удалось присоединиться игра не запущена.")
-                        elif user_id not in chat.players:
-                            user_name = message.from_user.first_name
-                            chat.players[user_id] = {'name': user_name, 'role': 'ждет', 'skipped_actions': 0}
-                            bot.send_message(user_id, f"🎲 Вы присоединились в чате {bot.get_chat(game_chat_id).title}")
+                        # Проверка, может ли пользователь отправлять сообщения
+                        if chat_member.status in ['member', 'administrator', 'creator'] and (chat_member.can_send_messages is None or chat_member.can_send_messages):
+                            if chat.game_running:
+                                bot.send_message(user_id, "🚫 Не удалось присоединиться, игра уже началась!")
+                            elif not chat.button_id:
+                                bot.send_message(user_id, "🚫 Не удалось присоединиться, игра не запущена.")
+                            elif user_id not in chat.players:
+                                user_name = message.from_user.first_name
+                                chat.players[user_id] = {'name': user_name, 'role': 'ждет', 'skipped_actions': 0}
+                                bot.send_message(user_id, f"🎲 Вы присоединились в чате {bot.get_chat(game_chat_id).title}")
 
-                            # Обновляем сообщение о регистрации игроков
-                            new_text = players_alive(chat.players, "registration")
-                            new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
+                                # Обновляем сообщение о регистрации игроков
+                                new_text = players_alive(chat.players, "registration")
+                                new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
 
-                            try:
-                                bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
-                            except Exception as e:
-                                logging.error(f"Ошибка обновления сообщения: {e}")
-                            
-                            # Проверяем количество зарегистрированных игроков
-                            if len(chat.players) >= 20:
-                                _start_game(game_chat_id)
+                                try:
+                                    bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_text, reply_markup=new_markup, parse_mode="Markdown")
+                                except Exception as e:
+                                    logging.error(f"Ошибка обновления сообщения: {e}")
+                                
+                                # Проверяем количество зарегистрированных игроков
+                                if len(chat.players) >= 20:
+                                    _start_game(game_chat_id)
+                            else:
+                                bot.send_message(user_id, "✅ Вы уже в игре! :)")
                         else:
-                            bot.send_message(user_id, "✅ Вы уже в игре ! :)")
-                    else:
-                        bot.send_message(user_id, "🚫 Вы не можете присоединиться к игре, так как у вас нет прав на отправку сообщений в группе.")
-                except Exception as e:
-                    logging.error(f"Ошибка при проверке прав доступа: {e}")
-                    bot.send_message(user_id, "Произошла ошибка при попытке присоединиться к игре.")
-            return
+                            bot.send_message(user_id, "🚫 Вы не можете присоединиться к игре, так как у вас нет прав на отправку сообщений в группе.")
+                    except Exception as e:
+                        logging.error(f"Ошибка при проверке прав доступа: {e}")
+                        bot.send_message(user_id, "Произошла ошибка при попытке присоединиться к игре.")
+                return
 
-    # Клавиатура для других действий, если команда /start без параметров
-    keyboard = types.InlineKeyboardMarkup()
-    join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
-    keyboard.add(join_chat_btn)
-    
-    news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FenemyMafiaNews')
-    keyboard.add(news_btn)
+        # Клавиатура для других действий, если команда /start без параметров
+        keyboard = types.InlineKeyboardMarkup()
+        join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
+        keyboard.add(join_chat_btn)
+        
+        news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FenemyMafiaNews')
+        keyboard.add(news_btn)
 
-    bot_username = bot.get_me().username
-    add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
-    add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
-    keyboard.add(add_to_group_btn)
-
-    bot.send_message(chat_id, '*Привет!*\nЯ бот-ведущий для игры в 🤵🏻 *Мафию.*\nДобавь меня в чат, назначь администратором и начни играть бесплатно', reply_markup=keyboard, parse_mode="Markdown")
-    
-@bot.callback_query_handler(func=lambda call: call.data == 'join_chat')
-def join_chat_callback(call):
-    chat_id = call.message.chat.id
-    message_id = call.message.message_id
-
-    bot.answer_callback_query(call.id, "Выберите чат")
-    # Создаем клавиатуру для кнопки "🛠️ Тестовый"
-    test_button = types.InlineKeyboardMarkup()
-    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/FenemyMafiaChat')
-    test_button.add(test_btn)
-
-    # Отправляем сообщение с кнопкой "🛠️ Тестовый"
-    bot.send_message(chat_id, '*Список чатов:*', reply_markup=test_button, parse_mode="Markdown")
-
-@bot.message_handler(commands=['game'])
-def create_game(message):
-    chat_id = message.chat.id
-
-    # Проверяем, что команда вызвана в групповом чате
-    if message.chat.type not in ['group', 'supergroup']:
-        bot.reply_to(message, "Эту команду можно использовать только в групповом чате.")
-        return
-
-    if chat_id not in chat_list:
-        chat_list[chat_id] = Game(chat_id)
-
-    bot.delete_message(chat_id, message.message_id)
-
-    chat = chat_list[chat_id]
-
-    if chat.game_running or chat.button_id:
-        # Игнорируем команду и удаляем сообщение, если игра уже начата или регистрация уже открыта
-        bot.delete_message(chat_id, message.message_id)
-        return
-
-    # Используем блокировку, чтобы предотвратить одновременное нажатие
-    with registration_lock:
-        if chat.button_id:
-            # Если регистрация уже была начата, игнорируем дальнейшие действия
-            return
-
-        join_btn = types.InlineKeyboardMarkup()
         bot_username = bot.get_me().username
-        join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
-        item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
-        join_btn.add(item1)
+        add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
+        add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
+        keyboard.add(add_to_group_btn)
 
-        # Отправляем начальное сообщение о наборе
-        msg_text = registration_message(chat.players)
-        msg = bot.send_message(chat_id, msg_text, reply_markup=join_btn, parse_mode="Markdown")
-        chat.button_id = msg.message_id
+        bot.send_message(chat_id, '*Привет!*\nЯ бот-ведущий для игры в 🤵🏻 *Мафию.*\nДобавь меня в чат, назначь администратором и начни играть бесплатно', reply_markup=keyboard, parse_mode="Markdown")
 
-        bot.pin_chat_message(chat_id, msg.message_id)
+    elif message.chat.type in ['group', 'supergroup']:
+        # Логика для запуска игры в группе
+        user_id = message.from_user.id
 
-        # Удаляем сообщение с командой /game
-        # Запускаем таймер на 1 минуту для уведомления и на 2 минуты для начала игры
-        notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
-        game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
-        
-        notification_timers[chat_id].start()
-        game_start_timers[chat_id].start()
-
-@bot.message_handler(commands=['start_game'])
-def start_game(message):
-    chat_id = message.chat.id
-
-    if message.chat.type not in ['group', 'supergroup']:
-        return
-        
-    user_id = message.from_user.id
-
-    bot.delete_message(chat_id, message.message_id)
-
-    # Проверка, является ли пользователь администратором
-    chat_member = bot.get_chat_member(chat_id, user_id)
-    if chat_member.status not in ['administrator', 'creator']:
-        return
-
-    # Удаление сообщения с командой
-    try:
         bot.delete_message(chat_id, message.message_id)
-    except Exception as e:
-        logging.error(f"Ошибка при удалении сообщения с командой /start_game: {e}")
 
-    _start_game(chat_id)
+        # Проверка, является ли пользователь администратором
+        chat_member = bot.get_chat_member(chat_id, user_id)
+        if chat_member.status not in ['administrator', 'creator']:
+            return
+
+        _start_game(chat_id)
+
 
 def _start_game(chat_id):
     global notification_timers
@@ -1296,6 +1222,71 @@ def _start_game(chat_id):
 
     # Запуск основного игрового цикла
     asyncio.run(game_cycle(chat_id))
+    
+@bot.callback_query_handler(func=lambda call: call.data == 'join_chat')
+def join_chat_callback(call):
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+
+    bot.answer_callback_query(call.id, "Выберите чат")
+    # Создаем клавиатуру для кнопки "🛠️ Тестовый"
+    test_button = types.InlineKeyboardMarkup()
+    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/FenemyMafiaChat')
+    test_button.add(test_btn)
+
+    # Отправляем сообщение с кнопкой "🛠️ Тестовый"
+    bot.send_message(chat_id, '*Список чатов:*', reply_markup=test_button, parse_mode="Markdown")
+
+@bot.message_handler(commands=['game'])
+def create_game(message):
+    chat_id = message.chat.id
+
+    # Проверяем, что команда вызвана в групповом чате
+    if message.chat.type not in ['group', 'supergroup']:
+        bot.reply_to(message, "Эту команду можно использовать только в групповом чате.")
+        return
+
+    if chat_id not in chat_list:
+        chat_list[chat_id] = Game(chat_id)
+
+    bot.delete_message(chat_id, message.message_id)
+
+    chat = chat_list[chat_id]
+
+    if chat.game_running or chat.button_id:
+        # Игнорируем команду и удаляем сообщение, если игра уже начата или регистрация уже открыта
+        bot.delete_message(chat_id, message.message_id)
+        return
+
+    # Используем блокировку, чтобы предотвратить одновременное нажатие
+    with registration_lock:
+        if chat.button_id:
+            # Если регистрация уже была начата, игнорируем дальнейшие действия
+            return
+
+        join_btn = types.InlineKeyboardMarkup()
+        bot_username = bot.get_me().username
+        join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
+        item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
+        join_btn.add(item1)
+
+        # Отправляем начальное сообщение о наборе
+        msg_text = registration_message(chat.players)
+        msg = bot.send_message(chat_id, msg_text, reply_markup=join_btn, parse_mode="Markdown")
+        chat.button_id = msg.message_id
+
+        bot.pin_chat_message(chat_id, msg.message_id)
+
+        # Уведомляем игроков о начале регистрации
+        notify_game_start(chat)  # <-- Здесь вызываем функцию для уведомления всех игроков
+
+        # Запускаем таймер на 1 минуту для уведомления и на 2 минуты для начала игры
+        notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
+        game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
+
+        notification_timers[chat_id].start()
+        game_start_timers[chat_id].start()
+
 
 @bot.message_handler(commands=['profile'])
 def handle_profile(message):
@@ -1482,6 +1473,44 @@ def stop_registration_timer(message):
     # Если был остановлен хотя бы один таймер, выводим сообщение
     if timers_stopped:
         bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную 🛠️", parse_mode="Markdown")
+
+
+# Команда /next для отправки уведомления о новой регистрации в чате
+@bot.message_handler(commands=['next'])
+def next_message(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    chat_title = bot.get_chat(chat_id).title
+
+    bot.delete_message(chat_id, message.message_id)
+
+    if chat_id not in next_players:
+        next_players[chat_id] = []
+
+    # Добавляем игрока в список тех, кто нажал "next"
+    if user_id not in next_players[chat_id]:
+        next_players[chat_id].append(user_id)
+
+    # Отправляем уведомление в личные сообщения игрока
+    bot.send_message(user_id, f"🔔 Вам придёт оповещение о новой регистрации в чате *{chat_title}*", parse_mode="Markdown")
+
+def notify_game_start(chat):
+    chat_title = bot.get_chat(chat.chat_id).title
+    if chat.chat_id in next_players:
+        for player_id in next_players[chat.chat_id]:
+            try:
+                join_btn = types.InlineKeyboardMarkup()
+                bot_username = bot.get_me().username
+                join_url = f'https://t.me/{bot_username}?start=join_{chat.chat_id}'
+                item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
+                join_btn.add(item1)
+
+                # Отправляем сообщение о начале регистрации
+                bot.send_message(player_id, f"👑 В чате *{chat_title}* начата регистрация на новую игру!", reply_markup=join_btn, parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Ошибка при отправке уведомления о старте игры игроку {player_id}: {e}")
+
+        next_players[chat.chat_id] = []
 
 @bot.message_handler(commands=['leave'])
 def leave_game(message):
