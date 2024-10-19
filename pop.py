@@ -1080,7 +1080,7 @@ def start_message(message):
         join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
         keyboard.add(join_chat_btn)
         
-        news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FenemyMafiaNews')
+        news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FrenemyMafiaNews')
         keyboard.add(news_btn)
 
         bot_username = bot.get_me().username
@@ -1260,11 +1260,11 @@ def join_chat_callback(call):
     bot.answer_callback_query(call.id, "Выберите чат")
     # Создаем клавиатуру для кнопки "🛠️ Тестовый"
     test_button = types.InlineKeyboardMarkup()
-    test_btn = types.InlineKeyboardButton('🛠️ Тестовый', url='https://t.me/FenemyMafiaChat')
+    test_btn = types.InlineKeyboardButton('🎲 Frenemy Mafia Chat', url='https://t.me/FrenemyMafiaChat')
     test_button.add(test_btn)
 
     # Отправляем сообщение с кнопкой "🛠️ Тестовый"
-    bot.send_message(chat_id, '*Список чатов:*', reply_markup=test_button, parse_mode="Markdown")
+    bot.send_message(chat_id, '*Список чатов*', reply_markup=test_button, parse_mode="Markdown")
 
 @bot.message_handler(commands=['game'])
 def create_game(message):
@@ -1805,7 +1805,7 @@ async def game_cycle(chat_id):
             for player_id, player in chat.players.items():
                 if not chat.game_running:
                     break
-                if player['role'] != '👨🏼‍🌾 Мирный житель' and not player.get('action_taken', False):
+                if player['role'] not in ['👨🏼‍🌾 Мирный житель', '🤞 Счастливчик', '💣 Смертник', '👮🏼 Сержант'] and not player.get('action_taken', False):
                     player['skipped_actions'] += 1
                     if player['skipped_actions'] >= 2:
                         to_remove.append(player_id)
