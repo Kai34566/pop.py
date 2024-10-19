@@ -868,33 +868,34 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
         else:
             deaths[victim_id] = {'victim': victim, 'roles': ['🔪 Маньяк']}
 
+    # Добавляем проверку на пропуски действий (Сон)
+    for player_id, player in chat.players.items():
+        if player['role'] != 'dead' and player.get('skipped_actions', 0) >= 2:
+            # Если игрока уже посетили другие роли, добавляем "Сон" к списку ролей
+            if player_id in deaths:
+                deaths[player_id]['roles'].append('💤 Сон')
+            else:
+                deaths[player_id] = {'victim': player, 'roles': ['💤 Сон']}
+
     # Обрабатываем смерти, выводим сообщения для каждого убитого
     for victim_id, death_info in deaths.items():
         victim = death_info['victim']
         roles_involved = death_info['roles']
 
-        # Проверка наличия щита у игрока
-        if victim_id in player_profiles and player_profiles[victim_id]['shield'] > 0:
-            player_profiles[victim_id]['shield'] -= 1  # Уменьшаем количество щитов на 1
-            roles_failed = ", ".join(roles_involved)
-            bot.send_message(chat.chat_id, f"⚔️ Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
-            # Отправляем личное сообщение игроку о спасении щитом
-            bot.send_message(victim_id, "⚔️ Тебя пытались убить, но щит спас тебя!")
-            continue
-        
-
-        if victim['role'] == '🤞 Счастливчик':
-            if random.random() < 0.5:
+        # Игнорируем щит, если одной из причин смерти был "Сон"
+        if '💤 Сон' not in roles_involved:
+            # Проверка наличия щита у игрока
+            if victim_id in player_profiles and player_profiles[victim_id]['shield'] > 0:
+                player_profiles[victim_id]['shield'] -= 1  # Уменьшаем количество щитов на 1
                 roles_failed = ", ".join(roles_involved)
-                bot.send_message(chat.chat_id, f'🤞 Кому-то сегодня ночью повезло\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
-                bot.send_message(victim_id, "🤞 Кто-то пытался тебя убить, но\nсегодня тебе повезло!")
+                bot.send_message(chat.chat_id, f"⚔️ Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
+                bot.send_message(victim_id, "⚔️ Тебя пытались убить, но щит спас тебя!")
                 continue
 
-        # Если Доктор спас игрока
-        if chat.doc_target and chat.doc_target == victim_id:
+        # Игнорируем лечение доктора, если одной из причин смерти был "Сон"
+        if '💤 Сон' not in roles_involved and chat.doc_target and chat.doc_target == victim_id:
             roles_failed = ", ".join(roles_involved)
             bot.send_message(chat.chat_id, f'👨🏼‍⚕️ *Доктор* кого-то спас этой ночью\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
-            # Отправляем личное сообщение спасённому игроку
             bot.send_message(chat.doc_target, '👨🏼‍⚕️ *Доктор* вылечил тебя!', parse_mode="Markdown")
             continue
 
@@ -929,10 +930,20 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
     # Выводим финальное сообщение с результатами ночи
     if combined_message:
         bot.send_message(chat.chat_id, combined_message, parse_mode="Markdown")
+    else:
+        # Если никого не убили, выводим сообщение
+        bot.send_message(chat.chat_id, "_🤷 Странно, этой ночью все остались в живых..._", parse_mode="Markdown")
 
     # Теперь выполняем передачу ролей после всех убийств
     check_and_transfer_don_role(chat)
     check_and_transfer_sheriff_role(chat)
+
+def process_night_actions(chat):
+    for player_id, player in chat.players.items():
+        if player['role'] != 'dead' and not player_made_action(player_id):
+            player_profiles[player_id]['skipped_actions'] += 1
+        else:
+            player_profiles[player_id]['skipped_actions'] = 0  # Сбрасываем счетчик, если игрок выполнил действие
 
 
 def get_or_create_profile(user_id, user_name):
@@ -1105,7 +1116,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 4:
+    if len(chat.players) < 3:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1182,7 +1193,7 @@ def _start_game(chat_id):
         roles_assigned += 1
 
     # Назначение Комиссара при 6 и более игроках
-    if roles_assigned < num_players and num_players >= 6:
+    if roles_assigned < num_players and num_players >= 4:
         logging.info(f"Назначение Комиссара: {players_list[roles_assigned][1]['name']}")
         change_role(players_list[roles_assigned][0], chat.players, '🕵️‍♂️ Комиссар Каттани', 'Ты — 🕵️‍♂️ Комиссар Каттани!\n\nГлавный городской защитник и гроза мафии. Твоя задача - находить мафию и исключать во время голосования.', chat)
         chat.sheriff_id = players_list[roles_assigned][0]
@@ -1800,6 +1811,7 @@ async def game_cycle(chat_id):
                         to_remove.append(player_id)
                 else:
                     player['action_taken'] = False
+                    player['skipped_actions'] = 0
 
             bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'☀️ *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
 
@@ -1823,10 +1835,6 @@ async def game_cycle(chat_id):
 
             if not chat.game_running:
                 break
-
-            # Проверка, убит ли кто-то ночью
-            if killed_by_mafia is None and killed_by_sheriff is None and killed_by_bomber is None and not killed_by_maniac:
-               bot.send_message(chat_id, '🤔 _Странно, этой ночью все остались в живых..._', parse_mode="Markdown")
 
             logging.info(f"Цель Комиссара: {chat.sheriff_check}, Цель адвоката: {chat.lawyer_target}")
 
