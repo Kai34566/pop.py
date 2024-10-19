@@ -1116,7 +1116,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1193,7 +1193,7 @@ def _start_game(chat_id):
         roles_assigned += 1
 
     # Назначение Комиссара при 6 и более игроках
-    if roles_assigned < num_players and num_players >= 4:
+    if roles_assigned < num_players and num_players >= 6:
         logging.info(f"Назначение Комиссара: {players_list[roles_assigned][1]['name']}")
         change_role(players_list[roles_assigned][0], chat.players, '🕵️‍♂️ Комиссар Каттани', 'Ты — 🕵️‍♂️ Комиссар Каттани!\n\nГлавный городской защитник и гроза мафии. Твоя задача - находить мафию и исключать во время голосования.', chat)
         chat.sheriff_id = players_list[roles_assigned][0]
