@@ -698,7 +698,14 @@ def check_game_end(chat, game_start_time):
     # Отправляем проигравшим сообщение
     for player_id in chat.players:
         if player_id not in winners_ids and chat.players[player_id]['status'] != 'left':
-            bot.send_message(player_id, "*Игра окончена*\nВы получили 0 💶!", parse_mode="Markdown")
+            bot.send_message(player_id, "*Игра окончена!*\nВы получили 0 💶", parse_mode="Markdown")
+
+    # Отправляем сообщение с предложением подписаться на новостной канал
+    news_btn = types.InlineKeyboardMarkup()
+    news_btn.add(types.InlineKeyboardButton("📰 Подписаться", url="https://t.me/+rJAbQVV5_lU4NjJi"))
+    bot.send_message(chat.chat_id, '*Канал игровых новостей*\n@FrenemyMafiaNews\n\nПодпишитесь, что бы быть в курсе всех обновлений игры', reply_markup=news_btn, parse_mode="Markdown")
+
+    time.sleep(4)
     
     # Подсчитываем время игры
     game_duration = time.time() - game_start_time
@@ -1813,7 +1820,7 @@ async def game_cycle(chat_id):
                     player['action_taken'] = False
                     player['skipped_actions'] = 0
 
-            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'☀️ *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
+            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'🌞 *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
 
             await asyncio.sleep(4)
 
