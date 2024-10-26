@@ -1516,6 +1516,30 @@ def stop_registration_timer(message):
     if timers_stopped:
         bot.send_message(chat_id, "*Таймер автоматического старта игры отключен.*\nЗапустите игру вручную через команду /start.", parse_mode="Markdown")
 
+@bot.message_handler(commands=['give'])
+def handle_give(message):
+    user_id = message.from_user.id  # Получаем ID отправителя команды
+    if user_id != <6265990443>:
+        bot.reply_to(message, "❌ У вас нет прав на использование этой команды.")
+        return
+    
+    try:
+        parts = message.text.split()
+        if len(parts) < 3:
+            bot.reply_to(message, "❗ Использование: /give <ID игрока> <количество евро>")
+            return
+        
+        target_id = int(parts[1])  # ID игрока, которому передаёте евро
+        amount = int(parts[2])  # Количество евро
+
+        if target_id in player_profiles:
+            player_profiles[target_id]['euro'] += amount
+            bot.reply_to(message, f"✅ {amount} евро успешно переведены игроку {player_profiles[target_id]['name']}!")
+        else:
+            bot.reply_to(message, "❌ Игрок с указанным ID не найден.")
+    except ValueError:
+        bot.reply_to(message, "❗ Использование: /give <ID игрока> <количество евро>")
+
 
 # Команда /next для отправки уведомления о новой регистрации в чате
 @bot.message_handler(commands=['next'])
