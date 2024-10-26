@@ -182,7 +182,7 @@ def day_message(players):
     roles = [player['role'] for player_id, player in sorted_players if player['role'] != 'dead']
     
     # Категоризация ролей
-    peaceful_roles = ['👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '🕵️‍♂️ Комиссар Каттани', '🤞 Счастливчик', '💣 Смертник', '💃🏼 Любовница', '👮🏼 Сержант', '👨🏼‍🌾 Мирный житель']
+    peaceful_roles = ['👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '🕵🏼 Комиссар Каттани', '🤞 Счастливчик', '💣 Смертник', '💃🏼 Любовница', '👮🏼 Сержант', '👨🏼‍🌾 Мирный житель']
     mafia_roles = ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '👨🏼‍💼 Адвокат']
     maniac_roles = ['🔪 Маньяк', '🤦‍♂️ Самоубийца']
 
@@ -505,7 +505,7 @@ def handle_confirm_vote(chat):
                 check_and_transfer_don_role(chat)
 
             # Проверка, был ли этот игрок Комиссаром
-            if dead['role'] == '🕵️‍♂️ Комиссар Каттани':
+            if dead['role'] == '🕵🏼 Комиссар Каттани':
                 check_and_transfer_sheriff_role(chat)
 
         else:
@@ -591,7 +591,7 @@ def handle_night_action(callback_query, chat, player_role):
         return False
     
     # Проверка, совершил ли Комиссар уже проверку или стрельбу
-    if player_role == '🕵️‍♂️ Комиссар Каттани' and (chat.sheriff_check or chat.sheriff_shoot):
+    if player_role == '🕵🏼 Комиссар Каттани' and (chat.sheriff_check or chat.sheriff_shoot):
         bot.answer_callback_query(callback_query.id, text="Вы уже сделали свой выбор этой ночью.")
         bot.delete_message(player_id, callback_query.message.message_id)
         return False
@@ -830,18 +830,18 @@ def check_and_transfer_sheriff_role(chat):
         # Комиссар мертв, проверяем, есть ли сержант
         if chat.sergeant_id and chat.sergeant_id in chat.players and chat.players[chat.sergeant_id]['role'] != 'dead':
             new_sheriff_id = chat.sergeant_id
-            change_role(new_sheriff_id, chat.players, '🕵️‍♂️ Комиссар Каттани', 'Теперь ты Комиссар Каттани!', chat)
+            change_role(new_sheriff_id, chat.players, '🕵🏼 Комиссар Каттани', 'Теперь ты Комиссар Каттани!', chat)
             chat.sheriff_id = new_sheriff_id
             chat.sergeant_id = None  # Теперь сержант становится Комиссаром, и роль сержанта больше не нужна
-            bot.send_message(chat.chat_id, "👮🏼 *Сержант* унаследовал роль 🕵️‍♂️ * Комиссар Каттани*", parse_mode="Markdown")
+            bot.send_message(chat.chat_id, "👮🏼 *Сержант* унаследовал роль 🕵🏼 * Комиссар Каттани*", parse_mode="Markdown")
         else:
             logging.info("Нет сержанта для передачи роли Комиссара.")
 
 def notify_police(chat):
     police_members = []
-    if chat.sheriff_id and chat.sheriff_id in chat.players and chat.players[chat.sheriff_id]['role'] == '🕵️‍♂️ Комиссар Каттани':
+    if chat.sheriff_id and chat.sheriff_id in chat.players and chat.players[chat.sheriff_id]['role'] == '🕵🏼 Комиссар Каттани':
         sheriff_name = chat.players[chat.sheriff_id]['name']
-        police_members.append(f"[{sheriff_name}](tg://user?id={chat.sheriff_id}) - 🕵️‍♂️ * Комиссар Каттани*")
+        police_members.append(f"[{sheriff_name}](tg://user?id={chat.sheriff_id}) - 🕵🏼 * Комиссар Каттани*")
     if chat.sergeant_id and chat.sergeant_id in chat.players and chat.players[chat.sergeant_id]['role'] == '👮🏼 Сержант':
         sergeant_name = chat.players[chat.sergeant_id]['name']
         police_members.append(f"[{sergeant_name}](tg://user?id={chat.sergeant_id}) - 👮🏼 *Сержант*")
@@ -864,9 +864,9 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
     if killed_by_sheriff:
         victim_id, victim = killed_by_sheriff
         if victim_id in deaths:
-            deaths[victim_id]['roles'].append('🕵️‍♂️ Комиссар Каттани')
+            deaths[victim_id]['roles'].append('🕵🏼 Комиссар Каттани')
         else:
-            deaths[victim_id] = {'victim': victim, 'roles': ['🕵️‍♂️ Комиссар Каттани']}
+            deaths[victim_id] = {'victim': victim, 'roles': ['🕵🏼 Комиссар Каттани']}
 
     if killed_by_maniac:
         victim_id, victim = killed_by_maniac
@@ -909,15 +909,15 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
         # Проверка Смертника: если он убит, забирает с собой убийцу
         if victim['role'] == '💣 Смертник':
             for killer_role in roles_involved:
-                if killer_role in ['🤵🏻‍♂️ Дон', '🕵️‍♂️ Комиссар Каттани', '🔪 Маньяк']:
+                if killer_role in ['🤵🏻‍♂️ Дон', '🕵🏼 Комиссар Каттани', '🔪 Маньяк']:
                     if killer_role == '🤵🏻‍♂️ Дон' and chat.don_id:
                         don_player_link = f"[{chat.players[chat.don_id]['name']}](tg://user?id={chat.don_id})"
                         combined_message += f"Сегодня был жестоко убит 🤵🏻‍♂️ *Дон* {don_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
                         chat.remove_player(chat.don_id, killed_by='night')
 
-                    if killer_role == '🕵️‍♂️ Комиссар Каттани' and chat.sheriff_id:
+                    if killer_role == '🕵🏼 Комиссар Каттани' and chat.sheriff_id:
                         sheriff_player_link = f"[{chat.players[chat.sheriff_id]['name']}](tg://user?id={chat.sheriff_id})"
-                        combined_message += f"Сегодня был жестоко убит 🕵️‍♂️ *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
+                        combined_message += f"Сегодня был жестоко убит 🕵🏼 *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
                         chat.remove_player(chat.sheriff_id, killed_by='night')
 
                     if killer_role == '🔪 Маньяк' and chat.maniac_id:
@@ -1202,7 +1202,7 @@ def _start_game(chat_id):
     # Назначение Комиссара при 6 и более игроках
     if roles_assigned < num_players and num_players >= 6:
         logging.info(f"Назначение Комиссара: {players_list[roles_assigned][1]['name']}")
-        change_role(players_list[roles_assigned][0], chat.players, '🕵️‍♂️ Комиссар Каттани', 'Ты — 🕵️‍♂️ Комиссар Каттани!\n\nГлавный городской защитник и гроза мафии. Твоя задача - находить мафию и исключать во время голосования.', chat)
+        change_role(players_list[roles_assigned][0], chat.players, '🕵🏼 Комиссар Каттани', 'Ты — 🕵🏼 Комиссар Каттани!\n\nГлавный городской защитник и гроза мафии. Твоя задача - находить мафию и исключать во время голосования.', chat)
         chat.sheriff_id = players_list[roles_assigned][0]
         roles_assigned += 1
 
@@ -1290,23 +1290,23 @@ def create_game(message):
     chat = chat_list[chat_id]
 
     if chat.game_running or chat.button_id:
-        # Игнорируем команду и удаляем сообщение, если игра уже начата или регистрация уже открыта
-        bot.delete_message(chat_id, message.message_id)
-        return
+        # Если игра уже начата или регистрация уже открыта, удалить текущее сообщение о регистрации
+        if chat.button_id:
+            try:
+                bot.delete_message(chat_id, chat.button_id)
+                chat.button_id = None
+            except Exception as e:
+                logging.error(f"Ошибка при удалении старого сообщения о наборе: {e}")
 
     # Используем блокировку, чтобы предотвратить одновременное нажатие
     with registration_lock:
-        if chat.button_id:
-            # Если регистрация уже была начата, игнорируем дальнейшие действия
-            return
-
         join_btn = types.InlineKeyboardMarkup()
         bot_username = bot.get_me().username
         join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
         item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
         join_btn.add(item1)
 
-        # Отправляем начальное сообщение о наборе
+        # Отправляем новое сообщение о наборе игроков
         msg_text = registration_message(chat.players)
         msg = bot.send_message(chat_id, msg_text, reply_markup=join_btn, parse_mode="Markdown")
         chat.button_id = msg.message_id
@@ -1314,14 +1314,20 @@ def create_game(message):
         bot.pin_chat_message(chat_id, msg.message_id)
 
         # Уведомляем игроков о начале регистрации
-        notify_game_start(chat)  # <-- Здесь вызываем функцию для уведомления всех игроков
+        notify_game_start(chat)
 
-        # Запускаем таймер на 1 минуту для уведомления и на 2 минуты для начала игры
-        notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
-        game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
+        # Проверяем, если таймеры уже запущены, не создаём новые
+        if chat_id not in notification_timers:
+            notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
+            notification_timers[chat_id].start()
+        else:
+            logging.info(f"Таймер уведомления уже активен для чата {chat_id}.")
 
-        notification_timers[chat_id].start()
-        game_start_timers[chat_id].start()
+        if chat_id not in game_start_timers:
+            game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
+            game_start_timers[chat_id].start()
+        else:
+            logging.info(f"Таймер старта игры уже активен для чата {chat_id}.")
 
 
 @bot.message_handler(commands=['profile'])
@@ -1585,7 +1591,7 @@ bot_username = "@RealMafiaTestBot"
 def all_night_actions_taken(chat):
     for player in chat.players.values():
         # Проверяем только живых игроков с активными ролями
-        if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '🕵️‍♂️ Комиссар Каттани', '👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '💃🏼 Любовница', '👨🏼‍💼 Адвокат', '🔪 Маньяк'] and player['role'] != 'dead':
+        if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '🕵🏼 Комиссар Каттани', '👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '💃🏼 Любовница', '👨🏼‍💼 Адвокат', '🔪 Маньяк'] and player['role'] != 'dead':
             # Если игрок заблокирован или не выполнил действие, возвращаем False
             if player.get('voting_blocked', False) or not player.get('action_taken', False):
                 return False
@@ -1646,7 +1652,7 @@ async def game_cycle(chat_id):
             private_message_btn.add(types.InlineKeyboardButton('Перейти к боту', url=private_message_url))
 
             # Отправляем сообщение с кнопкой и списком живых игроков
-            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/13', caption='🌙 *Наступает ночь*\nНа улицы города выходят лишь самые отважные и бесстрашные.\nУтром попробуем сосчитать их головы...', parse_mode="Markdown", reply_markup=private_message_btn)
+            bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/66', caption='🌙 *Наступает ночь*\nНа улицы города выходят лишь самые отважные и бесстрашные.\nУтром попробуем сосчитать их головы...', parse_mode="Markdown", reply_markup=private_message_btn)
             bot.send_message(chat_id=chat_id, text=players_alive_text, parse_mode="Markdown", reply_markup=private_message_btn)
 
             notify_mafia_and_don(chat)
@@ -1664,7 +1670,7 @@ async def game_cycle(chat_id):
                 if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
                     list_btn(chat.players, player_id, 'мафия', 'Кого будем устранять?', 'м')
 
-                elif player['role'] == '🕵️‍♂️ Комиссар Каттани':
+                elif player['role'] == '🕵🏼 Комиссар Каттани':
                     send_sheriff_menu(chat, player_id)
 
                 elif player['role'] == '👨🏼‍⚕️ Доктор':
@@ -1719,7 +1725,7 @@ async def game_cycle(chat_id):
 
                     if lover_target['role'] == '🤵🏻‍♂️ Дон':
                         don_blocked = True  # Блокируем убийство мафией
-                    elif lover_target['role'] == '🕵️‍♂️ Комиссар Каттани':
+                    elif lover_target['role'] == '🕵🏼 Комиссар Каттани':
                         chat.sheriff_check = None  # Блокируем проверку Комиссара
                         chat.sheriff_shoot = None  # Блокируем выстрел Комиссара
                     elif lover_target['role'] == '👨🏼‍⚕️ Доктор':
@@ -1820,7 +1826,7 @@ async def game_cycle(chat_id):
                     player['action_taken'] = False
                     player['skipped_actions'] = 0
 
-            bot.send_animation(chat_id, 'https://t.me/Hjoxbednxi/14', caption=f'🌞 *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
+            bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/67', caption=f'🌞 *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
 
             await asyncio.sleep(4)
 
@@ -1849,9 +1855,9 @@ async def game_cycle(chat_id):
             if chat.lawyer_target and chat.sheriff_check and chat.lawyer_target == chat.sheriff_check:
                 checked_player = chat.players[chat.sheriff_check]
                 bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼‍🌾 Мирный житель.")
-                bot.send_message(chat.sheriff_check, '🕵️‍♂️  *Комиссар Каттани* навестил тебя, но адвокат показал, что ты мирный житель.', parse_mode="Markdown")
+                bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но адвокат показал, что ты мирный житель.', parse_mode="Markdown")
                 if chat.sergeant_id and chat.sergeant_id in chat.players:
-                    sergeant_message = f"🕵️‍♂️  Комиссар Каттани проверил {checked_player['name']}, его роль - 👨🏼‍🌾 Мирный житель."
+                    sergeant_message = f"🕵🏼  Комиссар Каттани проверил {checked_player['name']}, его роль - 👨🏼‍🌾 Мирный житель."
                     bot.send_message(chat.sergeant_id, sergeant_message)
             else:
                 if chat.sheriff_check and chat.sheriff_check in chat.players:
@@ -1862,13 +1868,13 @@ async def game_cycle(chat_id):
                         
                     if checked_player['fake_docs'] > 0:
                         bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼‍🌾 Мирный житель (фальшивые документы).")
-                        bot.send_message(chat.sheriff_check, '🕵️‍♂️  *Комиссар Каттани* навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
+                        bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
                         checked_player['fake_docs'] -= 1
                     else:
                         bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - {checked_player['role']}.")
-                        bot.send_message(chat.sheriff_check, '🕵️‍♂️ *Комиссар Каттани* решил навестить тебя.', parse_mode="Markdown")
+                        bot.send_message(chat.sheriff_check, '🕵🏼 *Комиссар Каттани* решил навестить тебя.', parse_mode="Markdown")
                     if chat.sergeant_id and chat.sergeant_id in chat.players:
-                        sergeant_message = f"🕵️‍♂️ Комиссар Каттани проверил {checked_player['name']}, его роль - {checked_player['role']}."
+                        sergeant_message = f"🕵🏼 Комиссар Каттани проверил {checked_player['name']}, его роль - {checked_player['role']}."
                         bot.send_message(chat.sergeant_id, sergeant_message)
 
             if check_game_end(chat, game_start_time):
@@ -1889,7 +1895,7 @@ async def game_cycle(chat_id):
             # Начало голосования днем
             is_voting_time = True  # Включаем время голосования
             chat.vote_counts.clear()  # Сброс голосов перед началом нового голосования
-            vote_msg = bot.send_message(chat.chat_id, '*Пришло время определить и наказать виноватых, кто же отправится на виселицу?*\nГолосование продлится 45 секунд', reply_markup=types.InlineKeyboardMarkup([
+            vote_msg = bot.send_message(chat.chat_id, '*Пришло время определить и наказать виноватых*\nГолосование продлится 45 секунд', reply_markup=types.InlineKeyboardMarkup([
                 [types.InlineKeyboardButton('🗳 Голосование', url=f'https://t.me/{bot.get_me().username}')]
             ]), parse_mode="Markdown")
             chat.vote_message_id = vote_msg.message_id
@@ -2088,7 +2094,7 @@ def callback_handler(call):
             time.sleep(1.5)
 
         # Проверка, что действия Комиссара доступны только ночью
-        if role == '🕵️‍♂️ Комиссар Каттани':
+        if role == '🕵🏼 Комиссар Каттани':
             if not is_night:  # Если сейчас не ночь
                 bot.answer_callback_query(call.id, text="Действия  доступны только ночью.")
                 return
@@ -2157,7 +2163,7 @@ def callback_handler(call):
                 player_role = chat.players[from_id]['role']
 
                 # Обработка действий для Комиссара, мафии, адвоката и других ролей
-                if player_role == '🕵️‍♂️ Комиссар Каттани' and action == 'ш':
+                if player_role == '🕵🏼 Комиссар Каттани' and action == 'ш':
                     if not is_night:  # Если сейчас не ночь
                         bot.answer_callback_query(call.id, text="Действия  доступны только ночью.")
                         return# Комиссар проверяет игрока
@@ -2173,17 +2179,17 @@ def callback_handler(call):
                         except Exception as e:
                             logging.error(f"Ошибка при обновлении последнего меню Комиссара: {e}")
 
-                    bot.send_message(chat.chat_id, f"🕵️‍♂️ *Комиссар Каттани* ушел искать злодеев...", parse_mode="Markdown")
+                    bot.send_message(chat.chat_id, f"🕵🏼 *Комиссар Каттани* ушел искать злодеев...", parse_mode="Markdown")
 
                     # Отключаем кнопки после выбора
                     bot.edit_message_reply_markup(chat_id=from_id, message_id=chat.last_sheriff_menu_id, reply_markup=None)
 
                     # Уведомляем сержанта
                     if chat.sergeant_id and chat.sergeant_id in chat.players:
-                        sergeant_message = f"🕵️‍♂️ Комиссар Каттани {chat.players[from_id]['name']} отправился проверять {chat.players[target_id]['name']}."
+                        sergeant_message = f"🕵🏼 Комиссар Каттани {chat.players[from_id]['name']} отправился проверять {chat.players[target_id]['name']}."
                         bot.send_message(chat.sergeant_id, sergeant_message)
 
-                elif player_role == '🕵️‍♂️ Комиссар Каттани' and action == 'с':
+                elif player_role == '🕵🏼 Комиссар Каттани' and action == 'с':
                     if not is_night:  # Если сейчас не ночь
                         bot.answer_callback_query(call.id, text="Действия Комиссара доступны только ночью.")
                         return
@@ -2200,14 +2206,14 @@ def callback_handler(call):
                         except Exception as e:
                             logging.error(f"Ошибка при обновлении последнего меню Комиссара: {e}")
 
-                    bot.send_message(chat.chat_id, f"🕵️‍♂️ *Комиссар Каттани* зарядил свой пистолет...", parse_mode="Markdown")
+                    bot.send_message(chat.chat_id, f"🕵🏼 *Комиссар Каттани* зарядил свой пистолет...", parse_mode="Markdown")
 
                     # Отключаем кнопки после выбора
                     bot.edit_message_reply_markup(chat_id=from_id, message_id=chat.last_sheriff_menu_id, reply_markup=None)
 
                     # Уведомляем сержанта
                     if chat.sergeant_id and chat.sergeant_id in chat.players:
-                        sergeant_message = f"🕵️‍♂️ Комиссар Каттани {chat.players[from_id]['name']} стреляет в {chat.players[target_id]['name']}."
+                        sergeant_message = f"🕵🏼 Комиссар Каттани {chat.players[from_id]['name']} стреляет в {chat.players[target_id]['name']}."
                         bot.send_message(chat.sergeant_id, sergeant_message)
 
                 elif player_role in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон'] and action == 'м':  # Мафия или Дон выбирает жертву
@@ -2314,7 +2320,7 @@ def callback_handler(call):
                 if chat.players[from_id].get('action_taken', False):  # Проверяем, сделал ли уже Комиссар действие
                         bot.answer_callback_query(call.id, text="Вы уже сделали выбор этой ночью.")
                         return
-                list_btn(chat.players, from_id, '🕵️‍♂️ Комиссар Каттани', 'Кого будем проверять?', 'ш', message_id=chat.last_sheriff_menu_id)
+                list_btn(chat.players, from_id, '🕵🏼 Комиссар Каттани', 'Кого будем проверять?', 'ш', message_id=chat.last_sheriff_menu_id)
 
             elif action == 'shoot':
                 if not is_night:  # Если сейчас не ночь
@@ -2323,7 +2329,7 @@ def callback_handler(call):
                 if chat.players[from_id].get('action_taken', False):  # Проверяем, сделал ли уже Комиссар действие
                         bot.answer_callback_query(call.id, text="Вы уже сделали выбор этой ночью.")
                         return
-                list_btn(chat.players, from_id, '🕵️‍♂️ Комиссар Каттани', 'Кого будем стрелять?', 'с', message_id=chat.last_sheriff_menu_id)
+                list_btn(chat.players, from_id, '🕵🏼 Комиссар Каттани', 'Кого будем стрелять?', 'с', message_id=chat.last_sheriff_menu_id)
 
     except Exception as e:
         logging.error(f"Ошибка в callback_handler: {e}")
@@ -2351,7 +2357,7 @@ def handle_private_message(message):
         # Пересылка сообщений между Комиссаром и Сержантом только ночью
         if is_night:
             if user_id == chat.sheriff_id and chat.sergeant_id in chat.players:
-                bot.send_message(chat.sergeant_id, f"🕵️‍♂️ *Комиссар {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
+                bot.send_message(chat.sergeant_id, f"🕵🏼 *Комиссар {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
             elif user_id == chat.sergeant_id and chat.sheriff_id in chat.players:
                 bot.send_message(chat.sheriff_id, f"👮🏼 *Сержант {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
             # Пересылка сообщений между мафией и Доном только ночью
