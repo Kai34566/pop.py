@@ -721,6 +721,8 @@ def check_game_end(chat, game_start_time):
 
     bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
 
+    send_profiles_to_channel()
+
     # Отправляем сообщение всем убитым игрокам
     for dead_player in chat.all_dead_players:
         if isinstance(dead_player, dict):
@@ -962,7 +964,7 @@ def get_or_create_profile(user_id, user_name):
         profile = {
             'id': user_id,
             'name': user_name,
-            'euro': 0,  # Например, стартовый баланс
+            'euro': 100,  # Например, стартовый баланс
             'coins': 0,
             'shield': 0,
             'fake_docs': 0  # Инициализируем fake_docs значением 0
@@ -979,6 +981,31 @@ def get_or_create_profile(user_id, user_name):
             profile['coins'] = 0
 
     return profile
+
+def send_profiles_to_channel():
+    # Замените на ID вашего канала
+    channel_id = '@Hjoxbednxi'
+
+    if not player_profiles:
+        print("❌ Нет доступных данных о профилях.")
+        return
+
+    for user_id, profile in player_profiles.items():
+        # Формируем сообщение с данными каждого профиля с экранированием специальных символов
+        profile_data = (
+            f"/give {profile.get('id', 'Отсутствует')} euro {profile.get('euro', '0')} "
+            f"shield {profile.get('shield', '0')} fake\\_docs {profile.get('fake_docs', '0')} "
+            f"coins {profile.get('coins', '0')}"
+        )
+
+        try:
+            # Отправляем данные каждого профиля отдельно в канал
+            bot.send_message(channel_id, profile_data, parse_mode="MarkdownV2")
+        except Exception as e:
+            logging.error(f"Ошибка отправки данных профиля в канал: {e}")
+            return
+
+    print("✅ Данные профилей отправлены в канал.")
 
 def process_mafia_action(chat):
     mafia_victim = None
@@ -1330,42 +1357,40 @@ def create_game(message):
             logging.info(f"Таймер старта игры уже активен для чата {chat_id}.")
 
 
+def escape_markdown(text):
+    # Экранируем специальные символы Markdown
+    specials = r'\_*[]()~`>#+-=|{}.!'
+    return ''.join(f'\\{char}' if char in specials else char for char in text)
+
 @bot.message_handler(commands=['profile'])
 def handle_profile(message):
-
     if message.chat.type == 'private':
-        
         user_id = message.from_user.id  # Получаем ID пользователя
         user_name = message.from_user.first_name
         show_profile(message, user_id=user_id, user_name=user_name)
 
 def show_profile(message, user_id, message_id=None, user_name=None):
-    # Теперь используем переданный user_id вместо message.from_user.id
     if not user_name:
         user_name = message.from_user.first_name
-    
-    # Получаем или создаем профиль игрока
+
     profile = get_or_create_profile(user_id, user_name)
-    
-    # Формируем сообщение профиля
+
+    # Формируем сообщение профиля с экранированными символами
     profile_text = f"*Ваш профиль:*\n\n" \
-                   f"👤 {profile['name']}\n🔑ID: `{user_id}`\n\n" \
+                   f"👤 {escape_markdown(profile['name'])}\n🔑ID: {user_id}\n\n" \
                    f"💶 *Евро*: {profile['euro']}\n" \
                    f"🪙 *Монета*: {profile['coins']}\n\n" \
                    f"⚔️ *Щит*: {profile['shield']}\n" \
                    f"📁 *Документы*: {profile['fake_docs']}\n\n"
-    
-    # Создаем клавиатуру с кнопками "Магазин" и "Купить монеты"
+
     markup = types.InlineKeyboardMarkup()
     shop_btn = types.InlineKeyboardButton("🛒 Магазин", callback_data="shop")
     buy_coins_btn = types.InlineKeyboardButton("Купить 🪙", callback_data="buy_coins")
     markup.add(shop_btn, buy_coins_btn)
-    
+
     if message_id:
-        # Если передан message_id, редактируем сообщение
         bot.edit_message_text(chat_id=message.chat.id, message_id=message_id, text=profile_text, reply_markup=markup, parse_mode="Markdown")
     else:
-        # Если message_id не передан, создаем новое сообщение
         bot.send_message(message.chat.id, profile_text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data in ['shop', 'buy_coins', 'buy_shield', 'buy_fake_docs', 'back_to_profile'])
@@ -1587,7 +1612,7 @@ def leave_game(message):
 
 
 @bot.message_handler(commands=['give'])
-def give_item(message):
+def give_items(message):
     # ID пользователя, который имеет право выполнять команду
     allowed_user_id = 6265990443  # Замените на ваш user_id
 
@@ -1600,15 +1625,13 @@ def give_item(message):
     command_args = message.text.split()
 
     # Проверяем, что переданы правильные аргументы
-    if len(command_args) != 4:
-        bot.reply_to(message, "❌ Неправильное количество аргументов. Используйте: /give <user_id> <item> <amount>")
+    if len(command_args) < 4 or (len(command_args) - 2) % 2 != 0:
+        bot.reply_to(message, "❌ Неправильный формат команды. Используйте: /give <user_id> <item1> <amount1> [<item2> <amount2> ...]")
         return
 
     try:
-        # Извлекаем user_id игрока, тип предмета и количество
+        # Извлекаем user_id игрока
         target_user_id = int(command_args[1])
-        item_type = command_args[2].lower()  # Тип предмета (euro, shield, documents)
-        amount = int(command_args[3])
 
         # Проверяем, существует ли профиль игрока
         if target_user_id not in player_profiles:
@@ -1621,62 +1644,49 @@ def give_item(message):
                 # Если не удалось получить имя пользователя, используем 'Неизвестный'
                 username = "Неизвестный"
 
-            # Создаем профиль с ID игрока, именем пользователя и начальными значениями
+            # Создаем профиль с начальными значениями
             player_profiles[target_user_id] = {
-                'id': target_user_id,  # Сохраняем ID игрока
-                'name': username,      # Сохраняем имя пользователя
-                'euro': 0,             # Начальный баланс евро
-                'shield': 0,           # Количество щитов
-                'fake_docs': 0         # Количество документов
+                'id': target_user_id,
+                'name': username,
+                'euro': 0,
+                'shield': 0,
+                'fake_docs': 0,
+                'coins': 0
             }
             bot.reply_to(message, f"🆕 Профиль пользователя с именем {username} и ID {target_user_id} создан.")
 
-        # Выполняем действие в зависимости от типа предмета
-        if item_type == "euro":
-            player_profiles[target_user_id]['euro'] += amount
-            bot.reply_to(message, f"💶 Вы успешно перевели {amount} евро игроку с ID {target_user_id}.")
-        elif item_type == "shield":
-            player_profiles[target_user_id]['shield'] += amount
-            bot.reply_to(message, f"🛡️ Вы успешно передали {amount} щитов игроку с ID {target_user_id}.")
-        elif item_type == "fake_docs":
-            player_profiles[target_user_id]['fake_docs'] += amount
-            bot.reply_to(message, f"📄 Вы успешно передали {amount} документов игроку с ID {target_user_id}.")
-        else:
-            bot.reply_to(message, "❌ Неправильный тип предмета. Доступные типы: euro, shield, documents.")
+        # Обрабатываем пары item-amount из команды
+        response = []
+        for i in range(2, len(command_args), 2):
+            item_type = command_args[i].lower()
+            try:
+                amount = int(command_args[i + 1])
+            except ValueError:
+                bot.reply_to(message, f"❌ Неправильный формат количества для {item_type}. Используйте целое число.")
+                return
+
+            # Обновляем значения профиля игрока в зависимости от item_type
+            if item_type in player_profiles[target_user_id]:
+                player_profiles[target_user_id][item_type] += amount
+                response.append(f"✅ {item_type.capitalize()}: {amount}")
+            else:
+                response.append(f"❌ Неправильный тип предмета: {item_type}")
+
+        # Отправляем итоговое сообщение с результатами
+        bot.reply_to(message, f"Результаты для игрока {target_user_id}:\n" + "\n".join(response))
+
     except ValueError:
-        bot.reply_to(message, "❌ Неправильный формат аргументов. Используйте числовые значения для user_id и количества.")
+        bot.reply_to(message, "❌ Неправильный формат user_id. Используйте числовое значение.")
 
 @bot.message_handler(commands=['check'])
 def check_profiles(message):
     chat_id = message.chat.id
-    user_id = message.from_user.id
-
-    # Замените на ID вашего канала
-    channel_id = '@Hjoxbednxi'  # Например, '@examplechannel'
-
-    if not player_profiles:
-        bot.send_message(chat_id, "❌ Нет доступных данных о профилях.")
-        return
-
-    # Формируем сообщение с данными профилей
-    profile_data = "*Данные профилей игроков:*\n\n"
-    for user_id, profile in player_profiles.items():
-        profile_data += (
-            f"👤 Имя: {profile.get('name', 'Неизвестно')}\n"
-            f"🔑 ID: {profile.get('id', 'Отсутствует')}\n"
-            f"💶 Евро: {profile.get('euro', '0')}\n"
-            f"🪙 Монета: {profile.get('coins', '0')}\n"
-            f"⚔️ Щит: {profile.get('shield', '0')}\n"
-            f"📁 Документы: {profile.get('fake_docs', 'Нет')}\n\n"
-        )
 
     try:
-        # Отправляем данные профилей в канал
-        bot.send_message(channel_id, profile_data, parse_mode="Markdown")
+        send_profiles_to_channel()
         bot.send_message(chat_id, "✅ Данные профилей отправлены в канал.")
     except Exception as e:
-        logging.error(f"Ошибка отправки данных профилей в канал: {e}")
-        bot.send_message(chat_id, "❌ Ошибка при отправке данных профилей в канал.")
+        bot.send_message(chat_id, f"❌ Ошибка при отправке данных профилей в канал: {e}")
     
 
 bot_username = "@RealMafiaTestBot"
