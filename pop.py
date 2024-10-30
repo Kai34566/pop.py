@@ -970,7 +970,7 @@ def get_or_create_profile(user_id, user_name):
         profile = {
             'id': user_id,
             'name': user_name,
-            'euro': 100,  # Например, стартовый баланс
+            'euro': 0,  # Например, стартовый баланс
             'coins': 0,
             'shield': 0,
             'fake_docs': 0  # Инициализируем fake_docs значением 0
