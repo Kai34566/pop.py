@@ -535,19 +535,25 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None, player_role
     if yes_votes > no_votes:
         # Делаем имя игрока кликабельным
         player_link = f"[{player_name}](tg://user?id={chat.confirm_votes['player_id']})"
-        # Добавляем информацию о роли
-        result_text = (f"Результаты голосования:\n"
+        result_text = (f"*Результаты голосования:*\n"
                        f"👍🏼 {yes_votes} | 👎🏼 {no_votes}\n\n"
                        f"_Сегодня был повешен_ {player_link}\n"
-                       f"Он был {player_role}..")  # Добавляем информацию о роли
+                       f"Он был {player_role}..")
+        
+        # Отправляем сообщение в чат с результатами голосования
+        bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        
+        # Отправляем личное сообщение повешенному игроку
+        bot.send_message(chat.confirm_votes['player_id'], "*Тебя казнили на дневном собрании :(*", parse_mode="Markdown")
     else:
-        result_text = (f"Результаты голосования:\n"
+        result_text = (f"*Результаты голосования:*\n"
                        f"👍🏼 {yes_votes} | 👎🏼 {no_votes}\n\n"
                        f"Мнения жителей разошлись...\n"
                        f"Разошлись и сами жители, так\n"
                        f"никого и не повесив...")
-
-    bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        
+        # Отправляем сообщение в чат с результатами голосования
+        bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
 
 def send_sheriff_menu(chat, sheriff_id, callback_query=None, message_id=None):
     if not is_night:
@@ -1001,6 +1007,7 @@ def send_profiles_to_channel():
         try:
             # Отправляем данные каждого профиля отдельно в канал
             bot.send_message(channel_id, profile_data, parse_mode="MarkdownV2")
+            time.sleep(5)  # Задержка на 5 секунд
         except Exception as e:
             logging.error(f"Ошибка отправки данных профиля в канал: {e}")
             return
@@ -1151,7 +1158,7 @@ def _start_game(chat_id):
         return
 
     if len(chat.players) < 4:
-        bot.send_message(chat_id, '*🙅🏽‍♂️ Недостаточно игроков для начала игры*', parse_mode="Markdown")
+        bot.send_message(chat_id, '*Недостаточно игроков для начала игры...*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
 
@@ -1317,23 +1324,23 @@ def create_game(message):
     chat = chat_list[chat_id]
 
     if chat.game_running or chat.button_id:
-        # Если игра уже начата или регистрация уже открыта, удалить текущее сообщение о регистрации
-        if chat.button_id:
-            try:
-                bot.delete_message(chat_id, chat.button_id)
-                chat.button_id = None
-            except Exception as e:
-                logging.error(f"Ошибка при удалении старого сообщения о наборе: {e}")
+        # Игнорируем команду и удаляем сообщение, если игра уже начата или регистрация уже открыта
+        bot.delete_message(chat_id, message.message_id)
+        return
 
     # Используем блокировку, чтобы предотвратить одновременное нажатие
     with registration_lock:
+        if chat.button_id:
+            # Если регистрация уже была начата, игнорируем дальнейшие действия
+            return
+
         join_btn = types.InlineKeyboardMarkup()
         bot_username = bot.get_me().username
         join_url = f'https://t.me/{bot_username}?start=join_{chat_id}'
         item1 = types.InlineKeyboardButton('🤵🏻 Присоединиться', url=join_url)
         join_btn.add(item1)
 
-        # Отправляем новое сообщение о наборе игроков
+        # Отправляем начальное сообщение о наборе
         msg_text = registration_message(chat.players)
         msg = bot.send_message(chat_id, msg_text, reply_markup=join_btn, parse_mode="Markdown")
         chat.button_id = msg.message_id
@@ -1341,20 +1348,14 @@ def create_game(message):
         bot.pin_chat_message(chat_id, msg.message_id)
 
         # Уведомляем игроков о начале регистрации
-        notify_game_start(chat)
+        notify_game_start(chat)  # <-- Здесь вызываем функцию для уведомления всех игроков
 
-        # Проверяем, если таймеры уже запущены, не создаём новые
-        if chat_id not in notification_timers:
-            notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
-            notification_timers[chat_id].start()
-        else:
-            logging.info(f"Таймер уведомления уже активен для чата {chat_id}.")
+        # Запускаем таймер на 1 минуту для уведомления и на 2 минуты для начала игры
+        notification_timers[chat_id] = threading.Timer(60.0, lambda: notify_one_minute_left(chat_id))
+        game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
 
-        if chat_id not in game_start_timers:
-            game_start_timers[chat_id] = threading.Timer(120.0, lambda: start_game_with_delay(chat_id))
-            game_start_timers[chat_id].start()
-        else:
-            logging.info(f"Таймер старта игры уже активен для чата {chat_id}.")
+        notification_timers[chat_id].start()
+        game_start_timers[chat_id].start()
 
 
 def escape_markdown(text):
@@ -1834,7 +1835,7 @@ async def game_cycle(chat_id):
                     elif lover_target['role'] == '👨🏼‍⚕️ Доктор':
                         chat.doc_target = None  # Блокируем лечение доктора
                     elif lover_target['role'] == '🧙‍♂️ Бомж':
-                        chat.hobo_visitors.clear()  # Блокируем проверку бомжа
+                        chat.hobo_visitors = None  # Блокируем проверку бомжа
                     elif lover_target['role'] == '👨🏼‍💼 Адвокат':
                         chat.lawyer_target = None  # Блокируем действие адвоката
 
@@ -1869,7 +1870,7 @@ async def game_cycle(chat_id):
                     hobo_target_name = chat.players[hobo_target]['name']
                     hobo_visitors = []
 
-                    bot.send_message(hobo_target, f'🧙🏼‍♂️ Бомж выпросил у тебя бутылку этой ночью')
+                    bot.send_message(hobo_target, f'🧙🏼‍♂️ *Бомж* выпросил у тебя бутылку этой ночью', parse_mode="Markdown")
 
                     # Если мафия выбрала ту же цель, что и Бомж
                     if chat.dead and chat.dead[0] == hobo_target:
