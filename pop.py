@@ -727,7 +727,6 @@ def check_game_end(chat, game_start_time):
 
     bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
 
-    send_profiles_to_channel()
 
     # Отправляем сообщение всем убитым игрокам
     for dead_player in chat.all_dead_players:
@@ -745,6 +744,7 @@ def check_game_end(chat, game_start_time):
     reset_game(chat)
 
     reset_roles(chat)
+    send_profiles_to_channel()
     return True  # Игра окончена
 
 def reset_game(chat):
