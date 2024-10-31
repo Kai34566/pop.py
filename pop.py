@@ -159,7 +159,7 @@ def registration_message(players):
         player_list = ', '.join(player_names)
         return f"*Ведётся набор в игру*\n{player_list}\n_{len(player_names)} чел_"
     else:
-        return "*Ведётся набор в игру*\n_Зарегистрированных нет_"
+        return "*Ведётся набор в игру*\n_0 чел_"
 
 # Формирование сообщения с живыми игроками
 def night_message(players):
@@ -1043,7 +1043,9 @@ def process_mafia_action(chat):
 
         # Отправляем сообщение о результате голосования
         if mafia_victim and mafia_victim in chat.players:
-            send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: {chat.players[mafia_victim]['name']}")
+            # Экранируем специальные символы в имени жертвы для Markdown
+            mafia_victim_name = chat.players[mafia_victim]['name'].replace('_', '\\_').replace('*', '\\*').replace('[', '\\[')
+            send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: `{mafia_victim_name}`")
             bot.send_message(chat.chat_id, "💀 *Мафия* выбрала жертву...", parse_mode="Markdown")
 
             # Проверка на блокировку Дона или другие условия
@@ -1183,7 +1185,7 @@ def _start_game(chat_id):
     # Инициализируем время начала игры
     chat.game_start_time = time.time()
 
-    bot.send_message(chat_id, '*Игра начинается!*', parse_mode="Markdown")
+    bot.send_message(chat_id, '*Игра начинается!*\n\n👤 Идет выдача ролей...', parse_mode="Markdown")
 
     players_list = list(chat.players.items())
     shuffle(players_list)
