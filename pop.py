@@ -1837,7 +1837,7 @@ async def game_cycle(chat_id):
                     elif lover_target['role'] == '👨🏼‍⚕️ Доктор':
                         chat.doc_target = None  # Блокируем лечение доктора
                     elif lover_target['role'] == '🧙‍♂️ Бомж':
-                        chat.hobo_visitors = None  # Блокируем проверку бомжа
+                        chat.hobo_visitors ()  # Блокируем проверку бомжа
                     elif lover_target['role'] == '👨🏼‍💼 Адвокат':
                         chat.lawyer_target = None  # Блокируем действие адвоката
 
