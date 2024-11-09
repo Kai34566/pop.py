@@ -72,8 +72,8 @@ class Game:
         players_list = ", ".join([player['name'] for player in self.players.values()])
         return players_list
 
-    def remove_player(chat, player_id, killed_by=None):
-     if player_id in chat.players:
+def remove_player(chat, player_id, killed_by=None):
+    if player_id in chat.players:
         dead_player = chat.players.pop(player_id)  # Удаляем игрока из текущего списка игроков
 
         clickable_name = f"[{dead_player['name']}](tg://user?id={player_id})"
@@ -81,10 +81,15 @@ class Game:
         # Сохраняем информацию об убитом игроке в список убитых
         chat.all_dead_players.append(f"{clickable_name} - {dead_player['role']}")
 
-        # Если игрок был убит ночью (мафией или Комиссаром), отправляем сообщение
+        # Если игрок был убит ночью (мафией или Комиссаром), пытаемся отправить сообщение
         if killed_by == 'night':
-            bot.send_message(player_id, "Тебя убили :( Можешь написать здесь своё последнее сообщение.", parse_mode='Markdown')
-            chat.dead_last_words[player_id] = dead_player['name']  # Сохраняем имя игрока для последнего сообщения
+            try:
+                bot.send_message(player_id, "Тебя убили :( Можешь написать здесь своё последнее сообщение.", parse_mode='Markdown')
+                # Сохраняем имя игрока для последнего сообщения только если сообщение успешно отправлено
+                chat.dead_last_words[player_id] = dead_player['name']
+            except Exception as e:
+                # Игнорируем ошибку отправки сообщения
+                print(f"Не удалось отправить сообщение игроку {dead_player['name']}: {e}")
 
 def change_role(player_id, player_dict, new_role, text, game):
     player_dict[player_id]['role'] = new_role
@@ -255,18 +260,29 @@ def voice_handler(chat_id):
 def send_message_to_mafia(chat, message):
     for player_id, player in chat.players.items():
         if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
-            bot.send_message(player_id, message, parse_mode='Markdown')
+            try:
+                bot.send_message(player_id, message, parse_mode='Markdown')
+            except Exception as e:
+                # Игнорируем ошибку отправки сообщения
+                print(f"Не удалось отправить сообщение игроку {player['name']}: {e}")
 
 def notify_mafia(chat, sender_name, message, sender_id):
     for player_id, player in chat.players.items():
         if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон'] and player_id != sender_id:
             role = 'Дон' if chat.players[sender_id]['role'] == '🤵🏻‍♂️ Дон' else 'Мафия'
-            bot.send_message(player_id, f"*{role} {sender_name}:*\n{message}", parse_mode='Markdown')
+            try:
+                bot.send_message(player_id, f"*{role} {sender_name}:*\n{message}", parse_mode='Markdown')
+            except Exception as e:
+                print(f"Не удалось отправить сообщение мафии {player['name']}: {e}")
+
         if player['role'] == '👨🏼‍💼 Адвокат':
-            if chat.players[sender_id]['role'] == '🤵🏻‍♂️ Дон':
-                bot.send_message(player_id, f"🤵🏻‍♂️ Дон ???:\n{message}")
-            else:
-                bot.send_message(player_id, f"🤵🏻 Мафия ???:\n{message}")
+            try:
+                if chat.players[sender_id]['role'] == '🤵🏻‍♂️ Дон':
+                    bot.send_message(player_id, f"🤵🏻‍♂️ Дон ???:\n{message}")
+                else:
+                    bot.send_message(player_id, f"🤵🏻 Мафия ???:\n{message}")
+            except Exception as e:
+                print(f"Не удалось отправить сообщение адвокату {player['name']}: {e}")
 
 def notify_mafia_and_don(chat):
     mafia_and_don_list = []
@@ -283,7 +299,10 @@ def notify_mafia_and_don(chat):
     
     for player_id, player in players_copy:
         if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
-            bot.send_message(player_id, message, parse_mode='Markdown')
+            try:
+                bot.send_message(player_id, message, parse_mode='Markdown')
+            except Exception as e:
+                print(f"Не удалось отправить сообщение игроку {player['name']} ({player_id}): {e}")
 
 def notify_twenty_nine_seconds_left(chat_id):
     global registration_timers
@@ -541,10 +560,16 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None, player_role
                        f"Он был {player_role}..")
         
         # Отправляем сообщение в чат с результатами голосования
-        bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        try:
+            bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Не удалось отправить сообщение в чат {chat.chat_id}: {e}")
         
         # Отправляем личное сообщение повешенному игроку
-        bot.send_message(chat.confirm_votes['player_id'], "*Тебя казнили на дневном собрании :(*", parse_mode="Markdown")
+        try:
+            bot.send_message(chat.confirm_votes['player_id'], "*Тебя казнили на дневном собрании :(*", parse_mode="Markdown")
+        except Exception as e:
+            print(f"Не удалось отправить личное сообщение игроку {chat.confirm_votes['player_id']}: {e}")
     else:
         result_text = (f"*Результаты голосования:*\n"
                        f"👍🏼 {yes_votes} | 👎🏼 {no_votes}\n\n"
@@ -553,13 +578,19 @@ def send_voting_results(chat, yes_votes, no_votes, player_name=None, player_role
                        f"никого и не повесив...")
         
         # Отправляем сообщение в чат с результатами голосования
-        bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        try:
+            bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+        except Exception as e:
+            print(f"Не удалось отправить сообщение в чат {chat.chat_id}: {e}")
 
 def send_sheriff_menu(chat, sheriff_id, callback_query=None, message_id=None):
     if not is_night:
         if callback_query:
             # Отвечаем всплывающим уведомлением, если действие пытаются выполнить не ночью
-            bot.answer_callback_query(callback_query.id, "Действия  доступны только ночью.", show_alert=True)
+            try:
+                bot.answer_callback_query(callback_query.id, "Действия доступны только ночью.", show_alert=True)
+            except Exception as e:
+                print(f"Не удалось отправить уведомление: {e}")
         return
 
     sheriff_menu = types.InlineKeyboardMarkup()
@@ -569,10 +600,16 @@ def send_sheriff_menu(chat, sheriff_id, callback_query=None, message_id=None):
     new_text = "Выбери своё действие в эту ночь"
 
     if message_id:
-        bot.edit_message_text(chat_id=sheriff_id, message_id=message_id, text=new_text, reply_markup=sheriff_menu)
+        try:
+            bot.edit_message_text(chat_id=sheriff_id, message_id=message_id, text=new_text, reply_markup=sheriff_menu)
+        except Exception as e:
+            print(f"Не удалось отредактировать сообщение для {sheriff_id}: {e}")
     else:
-        msg = bot.send_message(sheriff_id, new_text, reply_markup=sheriff_menu)
-        chat.last_sheriff_menu_id = msg.message_id  # Сохраняем идентификатор последнего меню
+        try:
+            msg = bot.send_message(sheriff_id, new_text, reply_markup=sheriff_menu)
+            chat.last_sheriff_menu_id = msg.message_id  # Сохраняем идентификатор последнего меню
+        except Exception as e:
+            print(f"Не удалось отправить сообщение для {sheriff_id}: {e}")
 
 def reset_voting(chat):
     # Очищаем все переменные, связанные с голосованием
@@ -635,7 +672,6 @@ def check_game_end(chat, game_start_time):
     # Проверка, был ли линчеван самоубийца
     suicide_player = [p for p in chat.players.values() if p['role'] == '🤦‍♂️ Самоубийца' and p['status'] == 'lynched']
     
-    # 1. Победа самоубийцы, если его линчевали
     if suicide_player:
         winning_team = "Самоубийца"
         winners = [f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if v['role'] == '🤦‍♂️ Самоубийца' and v['status'] == 'lynched']
@@ -678,46 +714,38 @@ def check_game_end(chat, game_start_time):
         if f"[{player['name']}](tg://user?id={player_id}) - {player['role']}" in winners:
             # Начисление 20 евро победителям
             player_profiles[player_id]['euro'] += 10
-            bot.send_message(player_id, "*Игра окончена*!\nВы получили 10 💶", parse_mode="Markdown")
+            try:
+                bot.send_message(player_id, "*Игра окончена*!\nВы получили 10 💶", parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение победителю {player_id}: {e}")
     
     # Если самоубийца выиграл
     if suicide_player:
         for player_id, player in chat.players.items():
             if player['role'] == '🤦‍♂️ Самоубийца' and player['status'] == 'lynched':
-                bot.send_message(player_id, "Ты выиграл, как самоубийца! 💶 20")
+                try:
+                    bot.send_message(player_id, "Ты выиграл, как самоубийца! 💶 20")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение самоубийце {player_id}: {e}")
     
-    # Формируем список проигравших и отправляем им сообщение о проигрыше
-    winners_ids = [k for k, v in chat.players.items() if f"[{v['name']}](tg://user?id={k}) - {v['role']}" in winners]
-    remaining_players = [f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if k not in winners_ids and v['status'] not in ['dead', 'left']]
-
-    # Добавляем вышедших игроков
-    remaining_players.extend([f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if v['status'] == 'left'])
-
-    # Добавляем убитых игроков за игру
-    all_dead_players = []
-    for player in chat.all_dead_players:
-        if isinstance(player, dict):
-            all_dead_players.append(f"[{player['name']}](tg://user?id={player['user_id']}) - {player['role']}")
-        else:
-            all_dead_players.append(player)
-
-    # Отправляем проигравшим сообщение
+    # Отправляем проигравшим сообщение о проигрыше
     for player_id in chat.players:
         if player_id not in winners_ids and chat.players[player_id]['status'] != 'left':
-            bot.send_message(player_id, "*Игра окончена!*\nВы получили 0 💶", parse_mode="Markdown")
+            try:
+                bot.send_message(player_id, "*Игра окончена!*\nВы получили 0 💶", parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение проигравшему {player_id}: {e}")
 
     # Отправляем сообщение с предложением подписаться на новостной канал
     news_btn = types.InlineKeyboardMarkup()
     news_btn.add(types.InlineKeyboardButton("📰 Подписаться", url="https://t.me/+rJAbQVV5_lU4NjJi"))
-    bot.send_message(chat.chat_id, '*Канал игровых новостей*\n@FrenemyMafiaNews\n\nПодпишитесь, что бы быть в курсе всех обновлений игры', reply_markup=news_btn, parse_mode="Markdown")
+    try:
+        bot.send_message(chat.chat_id, '*Канал игровых новостей*\n@FrenemyMafiaNews\n\nПодпишитесь, чтобы быть в курсе всех обновлений игры', reply_markup=news_btn, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Не удалось отправить сообщение в чат {chat.chat_id}: {e}")
 
     time.sleep(4)
     
-    # Подсчитываем время игры
-    game_duration = time.time() - game_start_time
-    minutes = int(game_duration // 60)
-    seconds = int(game_duration % 60)
-
     # Формируем сообщение с результатами
     result_text = (f"*Игра окончена! 🙂*\n"
                    f"Победили: *{winning_team}*\n\n"
@@ -725,8 +753,10 @@ def check_game_end(chat, game_start_time):
                    f"*Остальные участники:*\n" + "\n".join(remaining_players + all_dead_players) + "\n\n"
                    f"⏰ Игра длилась: {minutes} мин. {seconds} сек.")
 
-    bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
-
+    try:
+        bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Не удалось отправить итоговое сообщение в чат {chat.chat_id}: {e}")
 
     # Отправляем сообщение всем убитым игрокам
     for dead_player in chat.all_dead_players:
@@ -742,7 +772,6 @@ def check_game_end(chat, game_start_time):
 
     # Сброс игры
     reset_game(chat)
-
     reset_roles(chat)
     send_profiles_to_channel()
     return True  # Игра окончена
@@ -849,7 +878,7 @@ def notify_police(chat):
     police_members = []
     if chat.sheriff_id and chat.sheriff_id in chat.players and chat.players[chat.sheriff_id]['role'] == '🕵🏼 Комиссар Каттани':
         sheriff_name = chat.players[chat.sheriff_id]['name']
-        police_members.append(f"[{sheriff_name}](tg://user?id={chat.sheriff_id}) - 🕵🏼 * Комиссар Каттани*")
+        police_members.append(f"[{sheriff_name}](tg://user?id={chat.sheriff_id}) - 🕵🏼 *Комиссар Каттани*")
     if chat.sergeant_id and chat.sergeant_id in chat.players and chat.players[chat.sergeant_id]['role'] == '👮🏼 Сержант':
         sergeant_name = chat.players[chat.sergeant_id]['name']
         police_members.append(f"[{sergeant_name}](tg://user?id={chat.sergeant_id}) - 👮🏼 *Сержант*")
@@ -858,7 +887,10 @@ def notify_police(chat):
 
     for player_id in [chat.sheriff_id, chat.sergeant_id]:
         if player_id in chat.players:
-            bot.send_message(player_id, message, parse_mode='Markdown')
+            try:
+                bot.send_message(player_id, message, parse_mode='Markdown')
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение полицейскому {player_id}: {e}")
 
 def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=None, killed_by_maniac=None):
     combined_message = ""
@@ -886,70 +918,77 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
     # Добавляем проверку на пропуски действий (Сон)
     for player_id, player in chat.players.items():
         if player['role'] != 'dead' and player.get('skipped_actions', 0) >= 2:
-            # Если игрока уже посетили другие роли, добавляем "Сон" к списку ролей
             if player_id in deaths:
                 deaths[player_id]['roles'].append('💤 Сон')
             else:
                 deaths[player_id] = {'victim': player, 'roles': ['💤 Сон']}
 
-    # Обрабатываем смерти, выводим сообщения для каждого убитого
     for victim_id, death_info in deaths.items():
         victim = death_info['victim']
         roles_involved = death_info['roles']
 
         # Игнорируем щит, если одной из причин смерти был "Сон"
         if '💤 Сон' not in roles_involved:
-            # Проверка наличия щита у игрока
             if victim_id in player_profiles and player_profiles[victim_id]['shield'] > 0:
-                player_profiles[victim_id]['shield'] -= 1  # Уменьшаем количество щитов на 1
+                player_profiles[victim_id]['shield'] -= 1
                 roles_failed = ", ".join(roles_involved)
-                bot.send_message(chat.chat_id, f"🪽 Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
-                bot.send_message(victim_id, "⚔️ Тебя пытались убить, но щит спас тебя!")
+                try:
+                    bot.send_message(chat.chat_id, f"🪽 Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
+                    bot.send_message(victim_id, "⚔️ Тебя пытались убить, но щит спас тебя!")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение о щите игроку {victim_id}: {e}")
                 continue
 
         # Игнорируем лечение доктора, если одной из причин смерти был "Сон"
         if '💤 Сон' not in roles_involved and chat.doc_target and chat.doc_target == victim_id:
             roles_failed = ", ".join(roles_involved)
-            bot.send_message(chat.chat_id, f'👨🏼‍⚕️ *Доктор* кого-то спас этой ночью\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
-            bot.send_message(chat.doc_target, '👨🏼‍⚕️ *Доктор* вылечил тебя!', parse_mode="Markdown")
+            try:
+                bot.send_message(chat.chat_id, f'👨🏼‍⚕️ *Доктор* кого-то спас этой ночью\n*{roles_failed}* не смог его убить', parse_mode="Markdown")
+                bot.send_message(chat.doc_target, '👨🏼‍⚕️ *Доктор* вылечил тебя!', parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение о лечении игроку {victim_id}: {e}")
             continue
 
         # Проверка Смертника: если он убит, забирает с собой убийцу
         if victim['role'] == '💣 Смертник':
             for killer_role in roles_involved:
                 if killer_role in ['🤵🏻‍♂️ Дон', '🕵🏼 Комиссар Каттани', '🔪 Маньяк']:
-                    if killer_role == '🤵🏻‍♂️ Дон' and chat.don_id:
-                        don_player_link = f"[{chat.players[chat.don_id]['name']}](tg://user?id={chat.don_id})"
-                        combined_message += f"Сегодня был жестоко убит 🤵🏻‍♂️ *Дон* {don_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
-                        chat.remove_player(chat.don_id, killed_by='night')
+                    try:
+                        if killer_role == '🤵🏻‍♂️ Дон' and chat.don_id:
+                            don_player_link = f"[{chat.players[chat.don_id]['name']}](tg://user?id={chat.don_id})"
+                            combined_message += f"Сегодня был жестоко убит 🤵🏻‍♂️ *Дон* {don_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
+                            chat.remove_player(chat.don_id, killed_by='night')
 
-                    if killer_role == '🕵🏼 Комиссар Каттани' and chat.sheriff_id:
-                        sheriff_player_link = f"[{chat.players[chat.sheriff_id]['name']}](tg://user?id={chat.sheriff_id})"
-                        combined_message += f"Сегодня был жестоко убит 🕵🏼 *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
-                        chat.remove_player(chat.sheriff_id, killed_by='night')
+                        if killer_role == '🕵🏼 Комиссар Каттани' and chat.sheriff_id:
+                            sheriff_player_link = f"[{chat.players[chat.sheriff_id]['name']}](tg://user?id={chat.sheriff_id})"
+                            combined_message += f"Сегодня был жестоко убит 🕵🏼 *Комиссар Каттани* {sheriff_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
+                            chat.remove_player(chat.sheriff_id, killed_by='night')
 
-                    if killer_role == '🔪 Маньяк' and chat.maniac_id:
-                        maniac_player_link = f"[{chat.players[chat.maniac_id]['name']}](tg://user?id={chat.maniac_id})"
-                        combined_message += f"Сегодня был жестоко убит 🔪 *Маньяк* {maniac_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
-                        chat.remove_player(chat.maniac_id, killed_by='night')
+                        if killer_role == '🔪 Маньяк' and chat.maniac_id:
+                            maniac_player_link = f"[{chat.players[chat.maniac_id]['name']}](tg://user?id={chat.maniac_id})"
+                            combined_message += f"Сегодня был жестоко убит 🔪 *Маньяк* {maniac_player_link}...\nХодят слухи, что у него был визит от 💣 *Смертник*\n\n"
+                            chat.remove_player(chat.maniac_id, killed_by='night')
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение о смерти игрока {killer_role}: {e}")
 
-        # Формируем сообщение о смерти
         victim_link = f"[{victim['name']}](tg://user?id={victim_id})"
         role_list = ", ".join(roles_involved)
         combined_message += f"Сегодня был жестоко убит *{victim['role']}* {victim_link}...\n"
         combined_message += f"Ходят слухи, что у него был визит от *{role_list}*\n\n"
 
-        # Удаление игрока из игры
         chat.remove_player(victim_id, killed_by='night')
 
-    # Выводим финальное сообщение с результатами ночи
     if combined_message:
-        bot.send_message(chat.chat_id, combined_message, parse_mode="Markdown")
+        try:
+            bot.send_message(chat.chat_id, combined_message, parse_mode="Markdown")
+        except Exception as e:
+            logging.error(f"Не удалось отправить финальное сообщение о ночных событиях: {e}")
     else:
-        # Если никого не убили, выводим сообщение
-        bot.send_message(chat.chat_id, "_🤷 Странно, этой ночью все остались в живых..._", parse_mode="Markdown")
+        try:
+            bot.send_message(chat.chat_id, "_🤷 Странно, этой ночью все остались в живых..._", parse_mode="Markdown")
+        except Exception as e:
+            logging.error(f"Не удалось отправить сообщение о мирной ночи: {e}")
 
-    # Теперь выполняем передачу ролей после всех убийств
     check_and_transfer_don_role(chat)
     check_and_transfer_sheriff_role(chat)
 
@@ -1024,39 +1063,47 @@ def process_mafia_action(chat):
             else:
                 vote_counts[victim_id] = vote_counts.get(victim_id, 0) + 1  # Голоса обычных мафиози
 
-        # Находим максимальное количество голосов
         max_votes = max(vote_counts.values(), default=0)
         possible_victims = [victim for victim, votes in vote_counts.items() if votes == max_votes]
 
-        # Если несколько жертв с одинаковым количеством голосов
         if len(possible_victims) > 1:
             if chat.don_id in chat.mafia_votes:
-                # Если Дон проголосовал, приоритет его выбору
                 mafia_victim = chat.mafia_votes[chat.don_id]
             else:
-                # Если Дон не проголосовал
-                send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
-                return None  # Если Дона нет, голосование провалено
+                try:
+                    send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение мафии о ничейном голосовании: {e}")
+                return None
         else:
-            # Если есть один явный лидер по голосам
             mafia_victim = possible_victims[0]
 
-        # Отправляем сообщение о результате голосования
         if mafia_victim and mafia_victim in chat.players:
-            # Экранируем специальные символы в имени жертвы для Markdown
             mafia_victim_name = chat.players[mafia_victim]['name'].replace('_', '\\_').replace('*', '\\*').replace('[', '\\[')
-            send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: {mafia_victim_name}")
-            bot.send_message(chat.chat_id, "🤵🏻 *Мафия* выбрала жертву...", parse_mode="Markdown")
+            try:
+                send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: {mafia_victim_name}")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение мафии о выборе жертвы: {e}")
+            
+            try:
+                bot.send_message(chat.chat_id, "🤵🏻 *Мафия* выбрала жертву...", parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение в чат о выборе жертвы мафией: {e}")
 
-            # Проверка на блокировку Дона или другие условия
             if chat.don_id and chat.players[chat.don_id].get('voting_blocked', False):
-                mafia_victim = None  # Блокируем убийство мафией
+                mafia_victim = None
             else:
                 chat.dead = (mafia_victim, chat.players[mafia_victim])
         else:
-            send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
+            try:
+                send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
+            except Exception as e:
+                logging.error(f"Не удалось отправить сообщение мафии о неудачном выборе жертвы: {e}")
     else:
-        send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
+        try:
+            send_message_to_mafia(chat, "*Голосование завершено.*\nСемья не смогла выбрать жертву.")
+        except Exception as e:
+            logging.error(f"Не удалось отправить сообщение мафии о завершении голосования: {e}")
 
     chat.mafia_votes.clear()
     return mafia_victim
@@ -1552,7 +1599,11 @@ def next_message(message):
     user_id = message.from_user.id
     chat_title = bot.get_chat(chat_id).title
 
-    bot.delete_message(chat_id, message.message_id)
+    # Удаляем сообщение команды, чтобы не захламлять чат
+    try:
+        bot.delete_message(chat_id, message.message_id)
+    except Exception as e:
+        logging.error(f"Ошибка при удалении сообщения команды 'next' в чате {chat_id}: {e}")
 
     if chat_id not in next_players:
         next_players[chat_id] = []
@@ -1562,7 +1613,11 @@ def next_message(message):
         next_players[chat_id].append(user_id)
 
     # Отправляем уведомление в личные сообщения игрока
-    bot.send_message(user_id, f"🔔 Вам придёт оповещение о новой регистрации в чате *{chat_title}*", parse_mode="Markdown")
+    try:
+        bot.send_message(user_id, f"🔔 Вам придёт оповещение о новой регистрации в чате *{chat_title}*", parse_mode="Markdown")
+    except Exception as e:
+        logging.error(f"Ошибка при отправке личного уведомления игроку {user_id}: {e}")
+
 
 def notify_game_start(chat):
     chat_title = bot.get_chat(chat.chat_id).title
@@ -1580,6 +1635,7 @@ def notify_game_start(chat):
             except Exception as e:
                 logging.error(f"Ошибка при отправке уведомления о старте игры игроку {player_id}: {e}")
 
+        # Очищаем список игроков, которые хотят получить уведомление
         next_players[chat.chat_id] = []
 
 @bot.message_handler(commands=['leave'])
@@ -1773,32 +1829,37 @@ async def game_cycle(chat_id):
                 if not chat.game_running:
                     break
 
-                if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
-                    list_btn(chat.players, player_id, 'мафия', 'Кого будем устранять?', 'м')
+                try:
 
-                elif player['role'] == '🕵🏼 Комиссар Каттани':
-                    send_sheriff_menu(chat, player_id)
+                    if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон']:
+                        list_btn(chat.players, player_id, 'мафия', 'Кого будем устранять?', 'м')
 
-                elif player['role'] == '👨🏼‍⚕️ Доктор':
-                    list_btn(chat.players, player_id, 'доктор', 'Кого будем лечить?', 'д')
+                    elif player['role'] == '🕵🏼 Комиссар Каттани':
+                        send_sheriff_menu(chat, player_id)
 
-                elif player['role'] == '🧙‍♂️ Бомж':
-                    list_btn(chat.players, player_id, 'бомж', 'К кому пойдешь за бутылкой?', 'б')
+                    elif player['role'] == '👨🏼‍⚕️ Доктор':
+                        list_btn(chat.players, player_id, 'доктор', 'Кого будем лечить?', 'д')
 
-                elif player['role'] == '💃🏼 Любовница':
-                    players_btn = types.InlineKeyboardMarkup()
-                    for key, val in chat.players.items():
-                        if key != player_id and val['role'] != 'dead' and (chat.previous_lover_target_id is None or key != chat.previous_lover_target_id):
-                            players_btn.add(types.InlineKeyboardButton(val['name'], callback_data=f'{key}_л'))
+                    elif player['role'] == '🧙‍♂️ Бомж':
+                        list_btn(chat.players, player_id, 'бомж', 'К кому пойдешь за бутылкой?', 'б')
 
-                    bot.send_message(player_id, "С кем будешь проводить ночь?", reply_markup=players_btn)
+                    elif player['role'] == '💃🏼 Любовница':
+                        players_btn = types.InlineKeyboardMarkup()
+                        for key, val in chat.players.items():
+                            if key != player_id and val['role'] != 'dead' and (chat.previous_lover_target_id is None or key != chat.previous_lover_target_id):
+                                players_btn.add(types.InlineKeyboardButton(val['name'], callback_data=f'{key}_л'))
 
-                elif player['role'] == '👨🏼‍💼 Адвокат':
-                    list_btn(chat.players, player_id, 'адвокат', 'Кого будешь защищать?', 'а')
+                        bot.send_message(player_id, "С кем будешь проводить ночь?", reply_markup=players_btn)
+
+                    elif player['role'] == '👨🏼‍💼 Адвокат':
+                        list_btn(chat.players, player_id, 'адвокат', 'Кого будешь защищать?', 'а')
 
                 # Отправляем кнопки выбора для Маньяка
-                elif player['role'] == '🔪 Маньяк':
-                    list_btn(chat.players, player_id, 'маньяк', 'Кого будешь убивать?', 'мк')
+                    elif player['role'] == '🔪 Маньяк':
+                        list_btn(chat.players, player_id, 'маньяк', 'Кого будешь убивать?', 'мк')
+                
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение игроку {player_id}: {e}")
 
 
             start_time = time.time()
@@ -1817,18 +1878,23 @@ async def game_cycle(chat_id):
             lover_target_healed = False
             if chat.lover_target_id and chat.lover_target_id in chat.players:
                 lover_target = chat.players[chat.lover_target_id]
-                bot.send_message(chat.lover_target_id, '"Ты со мною забудь обо всём...", - пела 💃🏼 Любовница', parse_mode="Markdown")
+                try:
+                    bot.send_message(chat.lover_target_id, '"Ты со мною забудь обо всём...", - пела 💃🏼 Любовница', parse_mode="Markdown")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение любовнице {chat.lover_target_id}: {e}")
 
                 if chat.doc_target == chat.lover_target_id:
-                    bot.send_message(chat.lover_target_id, "💃🏼 *Любовница* хотела замолкнуть тебя, но увидела, что 👨🏼‍⚕️ *Доктор* у тебя и ушла!", parse_mode="Markdown")
+                    try:
+                        bot.send_message(chat.lover_target_id, "💃🏼 *Любовница* хотела замолкнуть тебя, но увидела, что 👨🏼‍⚕️ *Доктор* у тебя и ушла!", parse_mode="Markdown")
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение цели доктору {chat.lover_target_id}: {e}")
+        
                     lover_target_healed = True  # Устанавливаем флаг, что цель любовницы была вылечена
                 else:
-
-                # Устанавливаем флаг блокировки голосования
+        # Устанавливаем флаг блокировки голосования
                     lover_target['voting_blocked'] = True
 
-                # Отправляем сообщение игроку, что голосовать он не сможет
-
+        # Блокируем действия, в зависимости от роли
                     if lover_target['role'] == '🤵🏻‍♂️ Дон':
                         don_blocked = True  # Блокируем убийство мафией
                     elif lover_target['role'] == '🕵🏼 Комиссар Каттани':
@@ -1840,13 +1906,13 @@ async def game_cycle(chat_id):
                         chat.hobo_visitors.clear()  # Блокируем проверку бомжа
                     elif lover_target['role'] == '👨🏼‍💼 Адвокат':
                         chat.lawyer_target = None  # Блокируем действие адвоката
-
-                    elif lover_target['role'] == '🔪 Маньяк':  # Добавляем блокировку для маньяка
+                    elif lover_target['role'] == '🔪 Маньяк':
                         chat.maniac_target = None  # Блокируем действие маньяка
 
             if lover_target_healed:
                 lover_target['voting_blocked'] = False
                 lover_target['healed_from_lover'] = True  # Устанавливаем флаг лечения жертвы любовницы
+
 
             # Обработка результата действия адвоката
             lawyer_target = None
@@ -1872,23 +1938,26 @@ async def game_cycle(chat_id):
                     hobo_target_name = chat.players[hobo_target]['name']
                     hobo_visitors = []
 
-                    bot.send_message(hobo_target, f'🧙🏼‍♂️ *Бомж* выпросил у тебя бутылку этой ночью', parse_mode="Markdown")
+                    try:
+                        bot.send_message(hobo_target, f'🧙🏼‍♂️ *Бомж* выпросил у тебя бутылку этой ночью', parse_mode="Markdown")
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение цели бомжа {hobo_target}: {e}")
 
-                    # Если мафия выбрала ту же цель, что и Бомж
+        # Если мафия выбрала ту же цель, что и Бомж
                     if chat.dead and chat.dead[0] == hobo_target:
                         don_id = chat.don_id
                         if don_id in chat.players:
                             don_name = chat.players[don_id]['name']
                             hobo_visitors.append(don_name)
 
-                    # Если Комиссар выбрал ту же цель для проверки или стрельбы
+        # Если Комиссар выбрал ту же цель для проверки или стрельбы
                     if chat.sheriff_check == hobo_target or chat.sheriff_shoot == hobo_target:
                         sheriff_id = chat.sheriff_id
                         if sheriff_id in chat.players:
                             sheriff_name = chat.players[sheriff_id]['name']
                             hobo_visitors.append(sheriff_name)
 
-                    # Если Доктор выбрал ту же цель для лечения
+        # Если Доктор выбрал ту же цель для лечения
                     if chat.doc_target == hobo_target:
                         doc_id = next((pid for pid, p in chat.players.items() if p['role'] == '👨🏼‍⚕️ Доктор'), None)
                         if doc_id and doc_id in chat.players:
@@ -1907,14 +1976,20 @@ async def game_cycle(chat_id):
                             lover_name = chat.players[lover_id]['name']
                             hobo_visitors.append(lover_name)
 
-                    # Формируем сообщение для Бомжа
-                    if hobo_visitors:
-                        visitors_names = ', '.join(hobo_visitors)
-                        bot.send_message(chat.hobo_id, f'Ночью ты пришёл за бутылкой к {hobo_target_name} и увидел там {visitors_names}.')
-                    else:
-                        bot.send_message(chat.hobo_id, f'Ты выпросил бутылку у {hobo_target_name} и ушел обратно на улицу. Ничего подозрительного не произошло.')
+        # Формируем сообщение для Бомжа
+                    try:
+                        if hobo_visitors:
+                            visitors_names = ', '.join(hobo_visitors)
+                            bot.send_message(chat.hobo_id, f'Ночью ты пришёл за бутылкой к {hobo_target_name} и увидел там {visitors_names}.')
+                        else:
+                            bot.send_message(chat.hobo_id, f'Ты выпросил бутылку у {hobo_target_name} и ушел обратно на улицу. Ничего подозрительного не произошло.')
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение бомжу {chat.hobo_id}: {e}")
                 else:
-                    bot.send_message(chat.hobo_id, 'Ты никого не встретил этой ночью.')
+                    try:
+                        bot.send_message(chat.hobo_id, 'Ты никого не встретил этой ночью.')
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение бомжу {chat.hobo_id} о пустой встрече: {e}")
 
             if not chat.game_running:
                 break
@@ -1960,28 +2035,53 @@ async def game_cycle(chat_id):
             # Проверка, показывается ли Комиссару "мирный житель"
             if chat.lawyer_target and chat.sheriff_check and chat.lawyer_target == chat.sheriff_check:
                 checked_player = chat.players[chat.sheriff_check]
-                bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель.")
-                bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но адвокат показал, что ты мирный житель.', parse_mode="Markdown")
+                try:
+                    bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель.")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение Комиссару {chat.sheriff_id}: {e}")
+
+                try:
+                    bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но адвокат показал, что ты мирный житель.', parse_mode="Markdown")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение проверенному игроку {chat.sheriff_check}: {e}")
+
                 if chat.sergeant_id and chat.sergeant_id in chat.players:
                     sergeant_message = f"🕵🏼  Комиссар Каттани проверил {checked_player['name']}, его роль - 👨🏼 Мирный житель."
-                    bot.send_message(chat.sergeant_id, sergeant_message)
+                    try:
+                        bot.send_message(chat.sergeant_id, sergeant_message)
+                    except Exception as e:
+                        logging.error(f"Не удалось отправить сообщение Сержанту {chat.sergeant_id}: {e}")
+
             else:
                 if chat.sheriff_check and chat.sheriff_check in chat.players:
-                    checked_player = chat.players[chat.sheriff_check]
+                    checked_player = chat.players[chat.sheriff_check] 
 
                     if 'fake_docs' not in checked_player:
                         checked_player['fake_docs'] = 0  # Если ключ отсутствует, инициализируем его
-                        
+            
                     if checked_player['fake_docs'] > 0:
-                        bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель (фальшивые документы).")
-                        bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
+                        try:
+                            bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель (фальшивые документы).")
+                        except Exception as e:
+                            logging.error(f"Не удалось отправить сообщение Комиссару {chat.sheriff_id} о фальшивых документах: {e}")
+
+                        try:
+                           bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
+                        except Exception as e:
+                            logging.error(f"Не удалось отправить сообщение проверенному игроку {chat.sheriff_check} о фальшивых документах: {e}")
+            
                         checked_player['fake_docs'] -= 1
                     else:
-                        bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - {checked_player['role']}.")
-                        bot.send_message(chat.sheriff_check, '🕵🏼 *Комиссар Каттани* решил навестить тебя.', parse_mode="Markdown")
-                    if chat.sergeant_id and chat.sergeant_id in chat.players:
-                        sergeant_message = f"🕵🏼 Комиссар Каттани проверил {checked_player['name']}, его роль - {checked_player['role']}."
-                        bot.send_message(chat.sergeant_id, sergeant_message)
+                        try:
+                            bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - {checked_player['role']}.")
+                        except Exception as e:
+                            logging.error(f"Не удалось отправить сообщение Комиссару {chat.sheriff_id} с настоящей ролью: {e}")
+
+                        try:
+                            bot.send_message(chat.sheriff_check, '🕵🏼 *Комиссар Каттани* решил навестить тебя.', parse_mode="Markdown")
+                        except Exception as e:
+                            logging.error(f"Не удалось отправить сообщение проверенному игроку {chat.sheriff_check}: {e}")
+
 
             if check_game_end(chat, game_start_time):
                 break  # Если игра закончена, выходим из цикла
@@ -2456,19 +2556,35 @@ def handle_private_message(message):
             last_words = message.text
             if last_words:
                 player_link = f"[{player_name}](tg://user?id={user_id})"
-                bot.send_message(chat.chat_id, f"Кто-то из жителей слышал, как {player_link} кричал перед смертью:\n_{last_words}_", parse_mode="Markdown")
-                bot.send_message(user_id, "*Сообщение принято и отправлено в чат.*", parse_mode='Markdown')
+                try:
+                    bot.send_message(chat.chat_id, f"Кто-то из жителей слышал, как {player_link} кричал перед смертью:\n_{last_words}_", parse_mode="Markdown")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить последние слова игрока {user_id} в чат: {e}")
+                
+                try:
+                    bot.send_message(user_id, "*Сообщение принято и отправлено в чат.*", parse_mode='Markdown')
+                except Exception as e:
+                    logging.error(f"Не удалось отправить подтверждение игроку {user_id}: {e}")
             return
 
         # Пересылка сообщений между Комиссаром и Сержантом только ночью
         if is_night:
             if user_id == chat.sheriff_id and chat.sergeant_id in chat.players:
-                bot.send_message(chat.sergeant_id, f"🕵🏼 *Комиссар {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
+                try:
+                    bot.send_message(chat.sergeant_id, f"🕵🏼 *Комиссар {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение от Комиссара {user_id} к Сержанту {chat.sergeant_id}: {e}")
             elif user_id == chat.sergeant_id and chat.sheriff_id in chat.players:
-                bot.send_message(chat.sheriff_id, f"👮🏼 *Сержант {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
+                try:
+                    bot.send_message(chat.sheriff_id, f"👮🏼 *Сержант {chat.players[user_id]['name']}*:\n{message.text}", parse_mode='Markdown')
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение от Сержанта {user_id} к Комиссару {chat.sheriff_id}: {e}")
             # Пересылка сообщений между мафией и Доном только ночью
             elif chat.players[user_id]['role'] in ['🤵🏻‍♂️ Дон', '🤵🏻 Мафия']:
-                notify_mafia(chat, chat.players[user_id]['name'], message.text, user_id)
+                try:
+                    notify_mafia(chat, chat.players[user_id]['name'], message.text, user_id)
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение от мафии/Дона {user_id}: {e}")
 
 @bot.message_handler(content_types=['text', 'sticker', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
 def handle_message(message):
