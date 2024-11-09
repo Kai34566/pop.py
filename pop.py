@@ -182,7 +182,7 @@ def day_message(players):
     roles = [player['role'] for player_id, player in sorted_players if player['role'] != 'dead']
     
     # Категоризация ролей
-    peaceful_roles = ['👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '🕵🏼 Комиссар Каттани', '🤞 Счастливчик', '💣 Смертник', '💃🏼 Любовница', '👮🏼 Сержант', '🧑‍💼 Мирный житель']
+    peaceful_roles = ['👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '🕵🏼 Комиссар Каттани', '🤞 Счастливчик', '💣 Смертник', '💃🏼 Любовница', '👮🏼 Сержант', '👨🏼 Мирный житель']
     mafia_roles = ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '👨🏼‍💼 Адвокат']
     maniac_roles = ['🔪 Маньяк', '🤦‍♂️ Самоубийца']
 
@@ -1045,8 +1045,8 @@ def process_mafia_action(chat):
         if mafia_victim and mafia_victim in chat.players:
             # Экранируем специальные символы в имени жертвы для Markdown
             mafia_victim_name = chat.players[mafia_victim]['name'].replace('_', '\\_').replace('*', '\\*').replace('[', '\\[')
-            send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: `{mafia_victim_name}`")
-            bot.send_message(chat.chat_id, "🤵🏻‍♂️ *Мафия* выбрала жертву...", parse_mode="Markdown")
+            send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: {mafia_victim_name}")
+            bot.send_message(chat.chat_id, "🤵🏻 *Мафия* выбрала жертву...", parse_mode="Markdown")
 
             # Проверка на блокировку Дона или другие условия
             if chat.don_id and chat.players[chat.don_id].get('voting_blocked', False):
@@ -1284,13 +1284,13 @@ def _start_game(chat_id):
     # Назначение оставшихся ролей как мирных жителей
     for i in range(roles_assigned, num_players):
         logging.info(f"Назначение Мирного жителя: {players_list[i][1]['name']}")
-        change_role(players_list[i][0], chat.players, '🧑‍💼 Мирный житель', 'Ты — 🧑‍💼 Мирный житель!\n\nТвоя задача найти мафию и повесить на дневном голосовании.', chat)
+        change_role(players_list[i][0], chat.players, '👨🏼 Мирный житель', 'Ты — 👨🏼 Мирный житель!\n\nТвоя задача найти мафию и повесить на дневном голосовании.', chat)
 
     # Проверка, чтобы никто не остался с ролью "ждет"
     for player_id, player_info in chat.players.items():
         if player_info['role'] == 'ждет':
             logging.error(f"Игрок {player_info['name']} остался без роли!")
-            change_role(player_id, chat.players, '🧑‍💼 Мирный житель', 'Ты — 🧑‍💼 Мирный житель!\n\nТвоя задача найти мафию и повесить на дневном голосовании.', chat)
+            change_role(player_id, chat.players, '👨🏼 Мирный житель', 'Ты — 👨🏼 Мирный житель!\n\nТвоя задача найти мафию и повесить на дневном голосовании.', chat)
 
     # Запуск основного игрового цикла
     asyncio.run(game_cycle(chat_id))
@@ -1837,7 +1837,7 @@ async def game_cycle(chat_id):
                     elif lover_target['role'] == '👨🏼‍⚕️ Доктор':
                         chat.doc_target = None  # Блокируем лечение доктора
                     elif lover_target['role'] == '🧙‍♂️ Бомж':
-                        chat.hobo_visitors ()  # Блокируем проверку бомжа
+                        chat.hobo_visitors.clear()  # Блокируем проверку бомжа
                     elif lover_target['role'] == '👨🏼‍💼 Адвокат':
                         chat.lawyer_target = None  # Блокируем действие адвоката
 
@@ -1924,7 +1924,7 @@ async def game_cycle(chat_id):
             for player_id, player in chat.players.items():
                 if not chat.game_running:
                     break
-                if player['role'] not in ['🧑‍💼 Мирный житель', '🤞 Счастливчик', '💣 Смертник', '👮🏼 Сержант'] and not player.get('action_taken', False):
+                if player['role'] not in ['👨🏼 Мирный житель', '🤞 Счастливчик', '💣 Смертник', '👮🏼 Сержант'] and not player.get('action_taken', False):
                     player['skipped_actions'] += 1
                     if player['skipped_actions'] >= 2:
                         to_remove.append(player_id)
@@ -1960,10 +1960,10 @@ async def game_cycle(chat_id):
             # Проверка, показывается ли Комиссару "мирный житель"
             if chat.lawyer_target and chat.sheriff_check and chat.lawyer_target == chat.sheriff_check:
                 checked_player = chat.players[chat.sheriff_check]
-                bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 🧑‍💼 Мирный житель.")
+                bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель.")
                 bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но адвокат показал, что ты мирный житель.', parse_mode="Markdown")
                 if chat.sergeant_id and chat.sergeant_id in chat.players:
-                    sergeant_message = f"🕵🏼  Комиссар Каттани проверил {checked_player['name']}, его роль - 🧑‍💼 Мирный житель."
+                    sergeant_message = f"🕵🏼  Комиссар Каттани проверил {checked_player['name']}, его роль - 👨🏼 Мирный житель."
                     bot.send_message(chat.sergeant_id, sergeant_message)
             else:
                 if chat.sheriff_check and chat.sheriff_check in chat.players:
@@ -1973,7 +1973,7 @@ async def game_cycle(chat_id):
                         checked_player['fake_docs'] = 0  # Если ключ отсутствует, инициализируем его
                         
                     if checked_player['fake_docs'] > 0:
-                        bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 🧑‍💼 Мирный житель (фальшивые документы).")
+                        bot.send_message(chat.sheriff_id, f"Ты выяснил, что {checked_player['name']} - 👨🏼 Мирный житель (фальшивые документы).")
                         bot.send_message(chat.sheriff_check, '🕵🏼  *Комиссар Каттани* навестил тебя, но ты показал фальшивые документы.', parse_mode="Markdown")
                         checked_player['fake_docs'] -= 1
                     else:
