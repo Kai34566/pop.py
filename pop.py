@@ -72,24 +72,24 @@ class Game:
         players_list = ", ".join([player['name'] for player in self.players.values()])
         return players_list
 
-def remove_player(chat, player_id, killed_by=None):
-    if player_id in chat.players:
-        dead_player = chat.players.pop(player_id)  # Удаляем игрока из текущего списка игроков
+    def remove_player(chat, player_id, killed_by=None):
+        if player_id in chat.players:
+            dead_player = chat.players.pop(player_id)  # Удаляем игрока из текущего списка игроков
 
-        clickable_name = f"[{dead_player['name']}](tg://user?id={player_id})"
+            clickable_name = f"[{dead_player['name']}](tg://user?id={player_id})"
         
         # Сохраняем информацию об убитом игроке в список убитых
-        chat.all_dead_players.append(f"{clickable_name} - {dead_player['role']}")
+            chat.all_dead_players.append(f"{clickable_name} - {dead_player['role']}")
 
         # Если игрок был убит ночью (мафией или Комиссаром), пытаемся отправить сообщение
-        if killed_by == 'night':
-            try:
-                bot.send_message(player_id, "Тебя убили :( Можешь написать здесь своё последнее сообщение.", parse_mode='Markdown')
+            if killed_by == 'night':
+                try:
+                    bot.send_message(player_id, "Тебя убили :( Можешь написать здесь своё последнее сообщение.", parse_mode='Markdown')
                 # Сохраняем имя игрока для последнего сообщения только если сообщение успешно отправлено
-                chat.dead_last_words[player_id] = dead_player['name']
-            except Exception as e:
+                    chat.dead_last_words[player_id] = dead_player['name']
+                except Exception as e:
                 # Игнорируем ошибку отправки сообщения
-                print(f"Не удалось отправить сообщение игроку {dead_player['name']}: {e}")
+                    print(f"Не удалось отправить сообщение игроку {dead_player['name']}: {e}")
 
 def change_role(player_id, player_dict, new_role, text, game):
     player_dict[player_id]['role'] = new_role
@@ -672,6 +672,7 @@ def check_game_end(chat, game_start_time):
     # Проверка, был ли линчеван самоубийца
     suicide_player = [p for p in chat.players.values() if p['role'] == '🤦‍♂️ Самоубийца' and p['status'] == 'lynched']
     
+    # 1. Победа самоубийцы, если его линчевали
     if suicide_player:
         winning_team = "Самоубийца"
         winners = [f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if v['role'] == '🤦‍♂️ Самоубийца' and v['status'] == 'lynched']
@@ -699,7 +700,10 @@ def check_game_end(chat, game_start_time):
     # 6. Победа мафии, если количество мафии и адвоката больше или равно числу не-мафиози
     elif (total_mafia_team == 1 and non_mafia_count == 1) or \
          (total_mafia_team == 2 and non_mafia_count == 1) or \
+         (total_mafia_team == 2 and non_mafia_count == 2) or \
+         (total_mafia_team == 2 and non_mafia_count == 0) or \
          (total_mafia_team == 3 and non_mafia_count == 2) or \
+         (total_mafia_team == 3 and non_mafia_count == 0) or \
          (total_mafia_team == 4 and non_mafia_count == 2) or \
          (total_mafia_team == 5 and non_mafia_count == 3):
         winning_team = "Мафия"
@@ -716,8 +720,8 @@ def check_game_end(chat, game_start_time):
             player_profiles[player_id]['euro'] += 10
             try:
                 bot.send_message(player_id, "*Игра окончена*!\nВы получили 10 💶", parse_mode="Markdown")
-            except Exception as e:
-                logging.error(f"Не удалось отправить сообщение победителю {player_id}: {e}")
+            except Exception:
+                pass
     
     # Если самоубийца выиграл
     if suicide_player:
@@ -725,27 +729,47 @@ def check_game_end(chat, game_start_time):
             if player['role'] == '🤦‍♂️ Самоубийца' and player['status'] == 'lynched':
                 try:
                     bot.send_message(player_id, "Ты выиграл, как самоубийца! 💶 20")
-                except Exception as e:
-                    logging.error(f"Не удалось отправить сообщение самоубийце {player_id}: {e}")
+                except Exception:
+                    pass
     
-    # Отправляем проигравшим сообщение о проигрыше
+    # Формируем список проигравших и отправляем им сообщение о проигрыше
+    winners_ids = [k for k, v in chat.players.items() if f"[{v['name']}](tg://user?id={k}) - {v['role']}" in winners]
+    remaining_players = [f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if k not in winners_ids and v['status'] not in ['dead', 'left']]
+
+    # Добавляем вышедших игроков
+    remaining_players.extend([f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if v['status'] == 'left'])
+
+    # Добавляем убитых игроков за игру
+    all_dead_players = []
+    for player in chat.all_dead_players:
+        if isinstance(player, dict):
+            all_dead_players.append(f"[{player['name']}](tg://user?id={player['user_id']}) - {player['role']}")
+        else:
+            all_dead_players.append(player)
+
+    # Отправляем проигравшим сообщение
     for player_id in chat.players:
         if player_id not in winners_ids and chat.players[player_id]['status'] != 'left':
             try:
                 bot.send_message(player_id, "*Игра окончена!*\nВы получили 0 💶", parse_mode="Markdown")
-            except Exception as e:
-                logging.error(f"Не удалось отправить сообщение проигравшему {player_id}: {e}")
+            except Exception:
+                pass
 
     # Отправляем сообщение с предложением подписаться на новостной канал
     news_btn = types.InlineKeyboardMarkup()
     news_btn.add(types.InlineKeyboardButton("📰 Подписаться", url="https://t.me/+rJAbQVV5_lU4NjJi"))
     try:
-        bot.send_message(chat.chat_id, '*Канал игровых новостей*\n@FrenemyMafiaNews\n\nПодпишитесь, чтобы быть в курсе всех обновлений игры', reply_markup=news_btn, parse_mode="Markdown")
-    except Exception as e:
-        logging.error(f"Не удалось отправить сообщение в чат {chat.chat_id}: {e}")
+        bot.send_message(chat.chat_id, '*Канал игровых новостей*\n@FrenemyMafiaNews\n\nПодпишитесь, что бы быть в курсе всех обновлений игры', reply_markup=news_btn, parse_mode="Markdown")
+    except Exception:
+        pass
 
     time.sleep(4)
     
+    # Подсчитываем время игры
+    game_duration = time.time() - game_start_time
+    minutes = int(game_duration // 60)
+    seconds = int(game_duration % 60)
+
     # Формируем сообщение с результатами
     result_text = (f"*Игра окончена! 🙂*\n"
                    f"Победили: *{winning_team}*\n\n"
@@ -755,8 +779,8 @@ def check_game_end(chat, game_start_time):
 
     try:
         bot.send_message(chat.chat_id, result_text, parse_mode="Markdown")
-    except Exception as e:
-        logging.error(f"Не удалось отправить итоговое сообщение в чат {chat.chat_id}: {e}")
+    except Exception:
+        pass
 
     # Отправляем сообщение всем убитым игрокам
     for dead_player in chat.all_dead_players:
@@ -767,14 +791,16 @@ def check_game_end(chat, game_start_time):
         
         try:
             bot.send_message(player_id, "*Игра окончена*!\nВы получили 0 💶", parse_mode="Markdown")
-        except Exception as e:
-            logging.error(f"Не удалось отправить сообщение убитому игроку {player_id}: {e}")
+        except Exception:
+            pass
 
     # Сброс игры
     reset_game(chat)
+
     reset_roles(chat)
     send_profiles_to_channel()
     return True  # Игра окончена
+
 
 def reset_game(chat):
     chat.players.clear()  # Очищаем список игроков
@@ -1232,7 +1258,7 @@ def _start_game(chat_id):
     # Инициализируем время начала игры
     chat.game_start_time = time.time()
 
-    bot.send_message(chat_id, '*Игра начинается!*\n\n👤 Идет выдача ролей...', parse_mode="Markdown")
+    bot.send_message(chat_id, '*Игра начинается!*', parse_mode="Markdown")
 
     players_list = list(chat.players.items())
     shuffle(players_list)
