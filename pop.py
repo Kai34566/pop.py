@@ -699,13 +699,23 @@ def check_game_end(chat, game_start_time):
     
     # 6. Победа мафии, если количество мафии и адвоката больше или равно числу не-мафиози
     elif (total_mafia_team == 1 and non_mafia_count == 1) or \
-         (total_mafia_team == 2 and non_mafia_count == 1) or \
-         (total_mafia_team == 2 and non_mafia_count == 2) or \
-         (total_mafia_team == 2 and non_mafia_count == 0) or \
-         (total_mafia_team == 3 and non_mafia_count == 2) or \
-         (total_mafia_team == 3 and non_mafia_count == 0) or \
+         (total_mafia_team == 5 and non_mafia_count == 4) or \
+         (total_mafia_team == 5 and non_mafia_count == 3) or \
+         (total_mafia_team == 5 and non_mafia_count == 2) or \
+         (total_mafia_team == 5 and non_mafia_count == 1) or \
+         (total_mafia_team == 5 and non_mafia_count == 0) or \
+         (total_mafia_team == 4 and non_mafia_count == 3) or \
          (total_mafia_team == 4 and non_mafia_count == 2) or \
-         (total_mafia_team == 5 and non_mafia_count == 3):
+         (total_mafia_team == 4 and non_mafia_count == 1) or \
+         (total_mafia_team == 4 and non_mafia_count == 0) or \
+         (total_mafia_team == 3 and non_mafia_count == 3) or \
+         (total_mafia_team == 3 and non_mafia_count == 2) or \
+         (total_mafia_team == 3 and non_mafia_count == 1) or \
+         (total_mafia_team == 3 and non_mafia_count == 0) or \
+         (total_mafia_team == 2 and non_mafia_count == 2) or \
+         (total_mafia_team == 2 and non_mafia_count == 1) or \
+         (total_mafia_team == 2 and non_mafia_count == 0) or \
+         (total_mafia_team == 1 and non_mafia_count == 0):
         winning_team = "Мафия"
         winners = [f"[{v['name']}](tg://user?id={k}) - {v['role']}" for k, v in chat.players.items() if v['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '👨🏼‍💼 Адвокат'] and v['status'] != 'dead']
     
@@ -800,6 +810,7 @@ def check_game_end(chat, game_start_time):
     reset_roles(chat)
     send_profiles_to_channel()
     return True  # Игра окончена
+
 
 
 def reset_game(chat):
@@ -1264,7 +1275,7 @@ def _start_game(chat_id):
     shuffle(players_list)
 
     num_players = len(players_list)
-    num_mafias = max(1, (num_players // 3))  # Минимум одна мафия
+    num_mafias = max(1, (num_players // 4))  # Минимум одна мафия
     mafia_assigned = 0
 
     # Установим статус alive для всех игроков перед началом игр
@@ -1544,7 +1555,7 @@ def handle_shop_actions(call):
 def send_help(message):
     # Проверяем, что сообщение отправлено в личном чате с ботом
     if message.chat.type == 'private':
-        bot.send_message(message.chat.id, "⚙️ *Есть ошибки*⁉️\nВсе вопросы и ошибки, можете писать здесь 👇\n@RealMafiaDiscussion", parse_mode="Markdown")
+        bot.send_message(message.chat.id, "⚙️ *Есть ошибки*⁉️\nВсе вопросы и ошибки, можете писать здесь 👇\n@FrenemyMafiaTalk", parse_mode="Markdown")
 
 @bot.message_handler(commands=['stop'])
 def stop_game(message):
