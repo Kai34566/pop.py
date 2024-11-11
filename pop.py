@@ -15,7 +15,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7191998889:AAHk1HXznlL0-xI7DDanbPdiYvQLI8zb_Qs")
+bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -1323,7 +1323,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*Недостаточно игроков для начала игры...*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
