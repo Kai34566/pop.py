@@ -8,6 +8,10 @@ import time
 import threading
 import io
 import csv
+from datetime import datetime, timedelta
+
+# Словарь для хранения временных блокировок пользователей
+user_mute_times = {}
 
 
 notification_timers = {}
@@ -209,13 +213,13 @@ def day_message(players):
     mafia_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in mafia_roles]
     mafia_count = sum(role_counts[role] for role in mafia_roles if role in role_counts)
     if mafia_list:
-        result_lines.append(f"🤵🏼 {mafia_count}: {', '.join(mafia_list)}")
+        result_lines.append(f"🤵🏻 {mafia_count}: {', '.join(mafia_list)}")
 
     # Обработка маньяков и самоубийц
     maniac_list = [f"{role} ({count})" if count > 1 else role for role, count in role_counts.items() if role in maniac_roles]
     maniac_count = sum(role_counts[role] for role in maniac_roles if role in role_counts)
     if maniac_list:
-        result_lines.append(f"🤵🏻‍♂️ {maniac_count}: {', '.join(maniac_list)}")
+        result_lines.append(f"👺 {maniac_count}: {', '.join(maniac_list)}")
 
     # Формирование финального текста
     return (f"*Живые игроки:*\n{player_list}\n\n"
@@ -817,7 +821,7 @@ def check_game_end(chat, game_start_time):
     reset_game(chat)
 
     reset_roles(chat)
-    send_profiles_to_channel()
+    send_profiles_as_file()
     return True  # Игра окончена
 
 
@@ -1323,7 +1327,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 4:
+    if len(chat.players) < 3:
         bot.send_message(chat_id, '*Недостаточно игроков для начала игры...*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -2754,39 +2758,71 @@ def handle_message(message):
     global is_night
     chat_id = message.chat.id
     user_id = message.from_user.id
-
     chat = chat_list.get(chat_id)
-    if chat:
-        if chat.game_running:
-            chat_member = bot.get_chat_member(chat_id, user_id)
-            is_admin = chat_member.status in ['administrator', 'creator']
 
-            # Определяем тип сообщения
-            message_type = message.content_type
-            logging.info(f"Получено сообщение от {user_id} типа: {message_type}")
+    if chat and chat.game_running:
+        chat_member = bot.get_chat_member(chat_id, user_id)
+        is_admin = chat_member.status in ['administrator', 'creator']
+        message_type = message.content_type
+        logging.info(f"Получено сообщение от {user_id} типа: {message_type}")
 
-            if is_night:
-                # Ночью удаляем все сообщения, кроме сообщений администраторов, начинающихся с '!'
-                if not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                    try:
-                        logging.info(f"Попытка удаления сообщения ночью от {user_id}: {message_type}")
-                        bot.delete_message(chat_id, message.message_id)
-                    except Exception as e:
-                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
-                else:
-                    logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
+        # Проверяем, есть ли активная блокировка у пользователя
+        current_time = datetime.now()
+        if user_id in user_mute_times and current_time < user_mute_times[user_id]:
+            remaining_time = (user_mute_times[user_id] - current_time).seconds
+            try:
+                bot.delete_message(chat_id, message.message_id)
+                bot.send_message(user_id, f"🚫 *Вы заблокированы в чате на {remaining_time} сек.*\nНельзя писать в это время.", parse_mode="Markdown")
+            except Exception:
+                pass
+            return  # Прекращаем выполнение функции, если игрок заблокирован
+
+        # Ночная проверка - блокировка и удаление всех сообщений, кроме админов с '!'
+        if is_night:
+            if not (is_admin and message_type == 'text' and message.text.startswith('!')):
+                # Блокируем пользователя на 1 минуту
+                mute_user(chat_id, user_id)
+                try:
+                    bot.delete_message(chat_id, message.message_id)
+                    bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nСейчас идёт ночь, вам нельзя писать в чат", parse_mode="Markdown")
+                except Exception:
+                    pass
             else:
-                # Днём удаляем сообщения от убитых, незарегистрированных игроков или жертвы любовницы (если не была вылечена), кроме сообщений администраторов с '!'
-                player = chat.players.get(user_id, {})
-                if ((user_id not in chat.players or player.get('role') == 'dead') or 
-                    (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
-                    not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                    try:
-                        logging.info(f"Попытка удаления сообщения днём от {user_id}: {message_type}")
-                        bot.delete_message(chat_id, message.message_id)
-                    except Exception as e:
-                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
-                else:
-                    logging.info(f"Сообщение днём сохранено от {user_id}: {message.text if message_type == 'text' else message_type}")
+                logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
+
+        # Дневная проверка - блокировка сообщений от незарегистрированных, убитых игроков и цели любовницы
+        else:
+            player = chat.players.get(user_id, {})
+            if ((user_id not in chat.players or player.get('role') == 'dead') or 
+                (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
+                not (is_admin and message_type == 'text' and message.text.startswith('!')):
+                
+                # Блокируем пользователя на 1 минуту
+                mute_user(chat_id, user_id)
+                try:
+                    bot.delete_message(chat_id, message.message_id)
+                    bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nВы вне игры, вам нельзя писать в чат", parse_mode="Markdown")
+                except Exception:
+                    pass
+            else:
+                logging.info(f"Сообщение днём сохранено от {user_id}: {message.text if message_type == 'text' else message_type}")
+
+def mute_user(chat_id, user_id):
+    """
+    Функция для мьютинга пользователя на 1 минуту.
+    """
+    mute_until = datetime.now() + timedelta(minutes=1)
+    user_mute_times[user_id] = mute_until
+
+    try:
+        # Ограничиваем пользователя на 1 минуту
+        bot.restrict_chat_member(
+            chat_id,
+            user_id,
+            until_date=mute_until,
+            permissions=types.ChatPermissions(can_send_messages=False)
+        )
+    except Exception as e:
+        logging.error(f"Ошибка при мьюте пользователя {user_id}: {e}")
 
 bot.infinity_polling()
