@@ -2010,7 +2010,7 @@ async def game_cycle(chat_id):
 
 
             start_time = time.time()
-            while time.time() - start_time < 30:
+            while time.time() - start_time < 45:
                 if all_night_actions_taken(chat):
                     break
                 await asyncio.sleep(2)
@@ -2240,7 +2240,7 @@ async def game_cycle(chat_id):
             chat.dead = None
             chat.sheriff_check = None
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(45)
 
             if not chat.game_running:
                 break
