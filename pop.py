@@ -1180,6 +1180,7 @@ def send_profiles_as_file():
     except Exception as e:
         logging.error(f"Ошибка отправки файла профилей в канал: {e}")
 
+
 @bot.message_handler(commands=['export_profiles'])
 def export_profiles_command(message):
     chat_id = message.chat.id
@@ -1327,7 +1328,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*Недостаточно игроков для начала игры...*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
@@ -1762,7 +1763,7 @@ def notify_game_start(chat):
 def leave_game(message):
     user_id = message.from_user.id
     game_chat_id = message.chat.id  # Получаем идентификатор чата
-    
+
     # Удаляем сообщение с командой
     try:
         bot.delete_message(chat_id=game_chat_id, message_id=message.message_id)
@@ -1771,23 +1772,62 @@ def leave_game(message):
 
     chat = chat_list.get(game_chat_id)
     
-    if chat and not chat.game_running and user_id in chat.players:
-        # Удаляем игрока из списка
-        chat.players.pop(user_id)
-        bot.send_message(user_id, "👾 Вы вышли из игры.")
-        
-        # Обновляем сообщение о регистрации с кнопкой присоединиться
-        new_msg_text = registration_message(chat.players)
-        
-        # Создаем новую клавиатуру с кнопкой "Присоединиться"
-        new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
-        
-        try:
-            bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_msg_text, reply_markup=new_markup, parse_mode="Markdown")
-        except Exception as e:
-            logging.error(f"Ошибка обновления сообщения: {e}")
-    else:
-        bot.send_message(user_id, "🚫 Вы не зарегистрированы в этой игре\nили игра уже началась.")
+    if chat:
+        if chat.game_running:  # Если игра уже началась
+            if user_id in chat.players:
+                # Обновляем статус игрока на "left" и добавляем его к списку мертвых
+                player = chat.players.pop(user_id)
+                full_name = f"{player['name']} {player.get('last_name', '')}"
+                clickable_name = f"[{full_name}](tg://user?id={user_id})"
+                chat.all_dead_players.append(f"{clickable_name} - {player['role']}")
+
+                # Отправляем сообщение в общий чат о выходе игрока
+                try:
+                    bot.send_message(game_chat_id, f"⚰️ {clickable_name} не выдержал гнетущей атмосферы этого города и повесился. Он был *{player['role']}*", parse_mode="Markdown")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение о выходе игрока в общий чат: {e}")
+
+                # Отправляем личное сообщение игроку
+                try:
+                    bot.send_message(user_id, "🚫 Вы вышли из игры")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить личное сообщение игроку {user_id}: {e}")
+                
+                # Проверка на передачу роли Дона
+                if player['role'] == '🤵🏻‍♂️ Дон':
+                    check_and_transfer_don_role(chat)
+
+                # Проверка на передачу роли Комиссара
+                if player['role'] == '🕵🏼 Комиссар Каттани':
+                    check_and_transfer_sheriff_role(chat)
+            else:
+                try:
+                    bot.send_message(user_id, "🚫 Вы не зарегистрированы в этой игре.")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить личное сообщение игроку {user_id}: {e}")
+        elif user_id in chat.players:
+            # Если игра не началась, просто удаляем игрока из списка
+            chat.players.pop(user_id)
+
+            # Отправляем личное сообщение игроку
+            try:
+                bot.send_message(user_id, "🚫 Вы вышли из игры изрегистрации")
+            except Exception as e:
+                logging.error(f"Не удалось отправить личное сообщение игроку {user_id}: {e}")
+            
+            # Обновляем сообщение о регистрации с кнопкой присоединиться
+            new_msg_text = registration_message(chat.players)
+            new_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton('🤵🏻 Присоединиться', url=f'https://t.me/{bot.get_me().username}?start=join_{game_chat_id}')]])
+            
+            try:
+                bot.edit_message_text(chat_id=game_chat_id, message_id=chat.button_id, text=new_msg_text, reply_markup=new_markup, parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Ошибка обновления сообщения о регистрации: {e}")
+        else:
+            try:
+                bot.send_message(user_id, "🚫 Вы не зарегистрированы в этой игре.")
+            except Exception as e:
+                logging.error(f"Не удалось отправить личное сообщение игроку {user_id}: {e}")
 
 
 @bot.message_handler(commands=['give'])
