@@ -434,6 +434,11 @@ def confirm_vote(chat_id, player_id, player_name, player_last_name, confirm_vote
     return msg.message_id, f"Вы точно хотите повесить {full_name_link}?"
     
 def end_day_voting(chat):
+    # Проверяем, завершено ли уже голосование
+    if getattr(chat, "voting_completed", False):  
+        return
+    chat.voting_completed = True  # Устанавливаем флаг завершения голосования
+
     if not chat.vote_counts:  # Если нет голосов
         bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
         reset_voting(chat)  # Сброс голосования
@@ -1415,7 +1420,7 @@ def _start_game(chat_id):
     roles_assigned = mafia_assigned + 1  # Учитывая Дона
 
     # Назначение доктора при 4 и более игроках
-    if roles_assigned < num_players and num_players >= 8:
+    if roles_assigned < num_players and num_players >= 4:
         full_name = f"{players_list[roles_assigned][1].get('name', 'Безымянный')} {players_list[roles_assigned][1].get('last_name', '')}".strip()
         logging.info(f"Назначение Доктора: {full_name}")
         change_role(players_list[roles_assigned][0], chat.players, '👨🏼‍⚕️ Доктор', 'Ты — 👨🏼‍⚕️ Доктор!\n\nТебе решать кого спасти этой ночью...', chat)
@@ -2070,6 +2075,8 @@ def reset_night_state(chat):
     chat.maniac_target = None
     for player in chat.players.values():
         player['action_taken'] = False
+
+    chat.voting_completed = False
 
 def process_lover_action(chat):
     """Обрабатывает действия любовницы."""
