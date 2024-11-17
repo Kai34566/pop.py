@@ -73,6 +73,7 @@ class Game:
         self.lawyer_target = None
         self.maniac_id = None
         self.maniac_target = None
+        self.voting_finished = False
 
     def update_player_list(self):
         players_list = ", ".join([f"{player['name']} {player.get('last_name', '')}" for player in self.players.values()])
@@ -435,81 +436,60 @@ def confirm_vote(chat_id, player_id, player_name, player_last_name, confirm_vote
     
 def end_day_voting(chat):
     if not chat.vote_counts:  # Если нет голосов
+        chat.voting_finished = True
         bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
-        reset_voting(chat)  # Сброс голосования
+        reset_voting(chat)
 
-        # Сбрасываем блокировку голосования у всех игроков
         for player in chat.players.values():
             player['voting_blocked'] = False
         
         if check_game_end(chat, time.time()):
-            return False  # Игра завершена
-        return False  # Немедленно продолжаем игру
+            return False
+        return False
 
     max_votes = max(chat.vote_counts.values(), default=0)
     potential_victims = [player_id for player_id, votes in chat.vote_counts.items() if votes == max_votes]
 
-    # Проверка, если большинство проголосовало за "Пропустить"
     if 'skip' in chat.vote_counts and chat.vote_counts['skip'] == max_votes:
+        chat.voting_finished = True
         bot.send_message(chat.chat_id, "*Голосование завершено*\n🚷 Жители города решили\nникого не повесить...", parse_mode="Markdown")
         reset_voting(chat)
 
-        # Сбрасываем блокировку голосования у всех игроков
         for player in chat.players.values():
             player['voting_blocked'] = False
         
         if check_game_end(chat, time.time()):
-            return False  # Игра завершена
-        return False  # Продолжаем игру без ожидания
+            return False
+        return False
 
     if len(potential_victims) == 1 and max_votes > 0:
         player_id = potential_victims[0]
-        if player_id in chat.players:  # Проверка, что игрок существует
-            
-            # Проверка, не вышел ли игрок из игры
-            if chat.players[player_id].get('status') == 'left':
-                player_name = chat.players[player_id]['name']
-                player_last_name = chat.players[player_id].get('last_name', '')
-                clickable_name = f"[{player_name} {player_last_name}](tg://user?id={player_id})"
-                bot.send_message(chat.chat_id, f"*Голосование завершено*\n😵 Игрок {clickable_name} не дождавшись суда, сам вынес себе приговор 😭", parse_mode="Markdown")
-                chat.remove_player(player_id)
-                reset_voting(chat)
-
-                # Сбрасываем блокировку голосования у всех игроков
-                for player in chat.players.values():
-                    player['voting_blocked'] = False
-                
-                if check_game_end(chat, time.time()):
-                    return False  # Игра завершена
-                return False  # Немедленно продолжаем игру
-            
-            # Продолжаем, если игрок не покинул игру
+        if player_id in chat.players:
+            chat.voting_finished = True
             player_name = chat.players[player_id]['name']
             player_last_name = chat.players[player_id].get('last_name', '')
-            chat.confirm_votes['player_id'] = player_id  # Сохраняем player_id для подтверждения голосования
-            chat.vote_message_id, chat.vote_message_text = confirm_vote(chat.chat_id, player_id, player_name, player_last_name, chat.confirm_votes, chat.players)  # Отправляем подтверждающее голосование
-            return True  # Ждем подтверждения голосования
+            chat.confirm_votes['player_id'] = player_id
+            chat.vote_message_id, chat.vote_message_text = confirm_vote(
+                chat.chat_id, player_id, player_name, player_last_name, chat.confirm_votes, chat.players
+            )
+            return True
         else:
             logging.error(f"Игрок с id {player_id} не найден в chat.players")
             reset_voting(chat)
-
-            # Сбрасываем блокировку голосования у всех игроков
             for player in chat.players.values():
                 player['voting_blocked'] = False
-                
-            return False  # Немедленно продолжаем игру
-    else:
-        # Если голоса равны или нет результата, выводим сообщение и немедленно продолжаем игру
-        bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
-        reset_voting(chat)  # Сброс голосования
+            return False
 
-        # Сбрасываем блокировку голосования у всех игроков
+    else:
+        chat.voting_finished = True
+        bot.send_message(chat.chat_id, "*Голосование завершено*\nМнения жителей разошлись...\nРазошлись и сами жители,\nтак никого и не повесив...", parse_mode="Markdown")
+        reset_voting(chat)
         for player in chat.players.values():
             player['voting_blocked'] = False
         
         if check_game_end(chat, time.time()):
-            return False  # Игра завершена
-        return False  # Продолжаем игру без ожидания
+            return False
+        return False
 
 def handle_confirm_vote(chat):
     yes_votes = chat.confirm_votes['yes']
@@ -630,7 +610,6 @@ def reset_voting(chat):
     chat.confirm_votes = {'yes': 0, 'no': 0, 'voted': {}}
     chat.vote_message_id = None
     chat.vote_counts['skip'] = 0
-    
     # Сбрасываем флаг голосования у каждого игрока
     for player in chat.players.values():
         player['has_voted'] = False
@@ -873,6 +852,10 @@ def reset_roles(chat):
         player['action_taken'] = False  # Сбрасываем флаг того, что игрок совершил действие ночью
         player['lucky_escape'] = False  # Сбрасываем флаг "счастливчика", если он спас себя
 
+        # Сбрасываем использование щита
+        if player_id in player_profiles:
+            player_profiles[player_id]['shield_used'] = False  # Сбрасываем использование щита
+
     # Сбрасываем специфические роли
     chat.don_id = None
     chat.sheriff_id = None
@@ -978,10 +961,26 @@ def process_deaths(chat, killed_by_mafia, killed_by_sheriff, killed_by_bomber=No
         victim = death_info['victim']
         roles_involved = death_info['roles']
 
+        # Проверяем, является ли игрок "Счастливчиком"
+        if victim['role'] == '🤞 Счастливчик':
+    # С вероятностью 50% игрок выживает
+            if random.randint(1, 100) <= 50:
+                roles_failed = ", ".join(roles_involved)  # Список ролей, которые пытались убить
+                try:
+                    bot.send_message(chat.chat_id, f"🤞 Кому-то из игроков повезло\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
+                    bot.send_message(victim_id, "🤞 Ты чудом избежал смерти этой ночью!")
+                except Exception as e:
+                    logging.error(f"Не удалось отправить сообщение Счастливчику {victim_id}: {e}")
+                continue  # Пропускаем обработку смерти этого 
+
         # Игнорируем щит, если одной из причин смерти был "Сон"
         if '💤 Сон' not in roles_involved:
-            if victim_id in player_profiles and player_profiles[victim_id]['shield'] > 0:
+            if (victim_id in player_profiles and 
+                player_profiles[victim_id]['shield'] > 0 and 
+                not player_profiles[victim_id].get('shield_used', False)):
+        # Уменьшаем количество щитов и отмечаем, что щит был использован
                 player_profiles[victim_id]['shield'] -= 1
+                player_profiles[victim_id]['shield_used'] = True  # Помечаем, что щит использован в этой игре
                 roles_failed = ", ".join(roles_involved)
                 try:
                     bot.send_message(chat.chat_id, f"🪽 Кто-то из игроков потратил щит\n*{roles_failed}* не смог убить его", parse_mode="Markdown")
@@ -2068,6 +2067,7 @@ def reset_night_state(chat):
     chat.shList_id = None
     chat.lawyer_target = None
     chat.maniac_target = None
+    chat.voting_finished = False
     for player in chat.players.values():
         player['action_taken'] = False
 
@@ -2348,7 +2348,8 @@ async def game_cycle(chat_id):
                 break
 
             # Обрабатываем результат голосования
-            should_continue = end_day_voting(chat)
+            if not chat.voting_finished:
+                should_continue = end_day_voting(chat)
 
             # Если игра не должна продолжаться после голосования
             if not should_continue:
@@ -2838,31 +2839,42 @@ def handle_message(message):
                 pass
             return  # Прекращаем выполнение функции, если игрок заблокирован
 
-        # Ночная проверка - блокировка и удаление всех сообщений, кроме админов с '!'
         if is_night:
-            if not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                # Блокируем пользователя на 1 минуту
+            if not is_admin:  # Если это не админ
+        # Удаляем сообщение и мьютим пользователя
                 mute_user(chat_id, user_id)
                 try:
                     bot.delete_message(chat_id, message.message_id)
                     bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nСейчас идёт ночь, вам нельзя писать в чат", parse_mode="Markdown")
                 except Exception:
                     pass
+            elif is_admin and message_type == 'text' and not message.text.startswith('!'):  # Админ пишет без '!'
+        # Только удаляем сообщение без блокировки
+                try:
+                    bot.delete_message(chat_id, message.message_id)
+                except Exception:
+                    pass
             else:
                 logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
 
-        # Дневная проверка - блокировка сообщений от незарегистрированных, убитых игроков и цели любовницы
         else:
+    # Проверка для дневного времени
             player = chat.players.get(user_id, {})
             if ((user_id not in chat.players or player.get('role') == 'dead') or 
                 (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
-                not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                
-                # Блокируем пользователя на 1 минуту
+                not is_admin:
+        
+        # Блокируем пользователя на 1 минуту
                 mute_user(chat_id, user_id)
                 try:
                     bot.delete_message(chat_id, message.message_id)
                     bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nВы вне игры, вам нельзя писать в чат", parse_mode="Markdown")
+                except Exception:
+                    pass
+            elif is_admin and message_type == 'text' and not message.text.startswith('!'):
+        # Только удаляем сообщение без блокировки
+                try:
+                    bot.delete_message(chat_id, message.message_id)
                 except Exception:
                     pass
             else:
