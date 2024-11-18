@@ -19,7 +19,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
+bot = telebot.TeleBot("7720619157:AAHeNCCL2K7rMFqbt80rQAusOofIG2-VeE8")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -1953,11 +1953,9 @@ def process_sheriff_actions(chat):
     else:
         if chat.sheriff_check and chat.sheriff_check in chat.players:
             checked_player = chat.players[chat.sheriff_check]
+            player_profile = player_profiles.get(chat.sheriff_check, {})
 
-            if 'fake_docs' not in checked_player:
-                checked_player['fake_docs'] = 0  # Если ключ отсутствует, инициализируем его
-
-            if checked_player['fake_docs'] > 0:
+            if player_profile.get('fake_docs', 0) > 0:
                 # Проверка фальшивых документов
                 try:
                     bot.send_message(chat.sheriff_id, f"Ты выяснил, что {get_full_name(checked_player)} - 👨🏼 Мирный житель (фальшивые документы).")
@@ -1977,7 +1975,8 @@ def process_sheriff_actions(chat):
                     except Exception:
                         pass
 
-                checked_player['fake_docs'] -= 1
+                player_profile['fake_docs'] -= 1  # Уменьшаем количество документов
+                player_profiles[chat.sheriff_check] = player_profile  # Сохраняем изменения в профиле
             else:
                 # Настоящая роль игрока
                 try:
@@ -2014,20 +2013,23 @@ def handle_voting(chat):
     )
     chat.vote_message_id = vote_msg.message_id
 
+    lover_target_healed = chat.doc_target == chat.lover_target_id
+
     # Отправляем кнопки голосования игрокам
     for player_id in chat.players:
-        try:
-            bot.send_message(
-                player_id,
-                '*Пришло время искать виноватых!*\nКого ты хочешь повесить?',
-                reply_markup=types.InlineKeyboardMarkup(
-                    [[types.InlineKeyboardButton(get_full_name(chat.players[pid]), callback_data=f"{pid}_vote")] for pid in chat.players if pid != player_id] +
-                    [[types.InlineKeyboardButton('🚷 Пропустить', callback_data='skip_vote')]]
-                ),
-                parse_mode="Markdown"
-            )
-        except Exception:
-            pass
+        if player_id != chat.lover_target_id or lover_target_healed:
+            try:
+                bot.send_message(
+                    player_id,
+                    '*Пришло время искать виноватых!*\nКого ты хочешь повесить?',
+                    reply_markup=types.InlineKeyboardMarkup(
+                        [[types.InlineKeyboardButton(get_full_name(chat.players[pid]), callback_data=f"{pid}_vote")] for pid in chat.players if pid != player_id] +
+                        [[types.InlineKeyboardButton('🚷 Пропустить', callback_data='skip_vote')]]
+                    ),
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                pass
 
     # Ждём завершения голосования (с блокировкой потока)
     vote_end_time = time.time() + 45
@@ -2042,6 +2044,7 @@ def handle_voting(chat):
 
     # Обрабатываем результаты голосования
     return end_day_voting(chat)
+
 
 def notify_night_start(chat_id, players_alive_text):
     """Отправляет уведомление о начале ночи."""
@@ -2446,13 +2449,19 @@ def skip_vote_handler(call):
     if 'vote_counts' not in chat.__dict__:
         chat.vote_counts = {}
 
-    if not chat.players[from_id].get('has_voted', False):
+    # Проверка блокировки голосования любовницей
+    player = chat.players.get(from_id)
+    if player.get('voting_blocked', False) and not player.get('healed_from_lover', False):
+        bot.answer_callback_query(call.id, text="💃🏼 Ты со мною забудь обо всём... ")
+        return
+
+    if not player.get('has_voted', False):
         chat.vote_counts['skip'] = chat.vote_counts.get('skip', 0) + 1
-        chat.players[from_id]['has_voted'] = True
+        player['has_voted'] = True
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="Ты выбрал(а) пропустить голосование")
         
         # Формируем полное имя для ссылки через get_full_name
-        full_name = get_full_name(chat.players[from_id])
+        full_name = get_full_name(player)
         voter_link = f"[{full_name}](tg://user?id={from_id})"
         
         bot.send_message(chat_id, f"🚷 {voter_link} предлагает никого не вешать", parse_mode="Markdown")
@@ -2731,6 +2740,10 @@ def callback_handler(call):
                     if 'vote_counts' not in chat.__dict__:
                         chat.vote_counts = {}
 
+                    if player.get('voting_blocked', False) and not player.get('healed_from_lover', False):
+                        bot.answer_callback_query(call.id, text="💃🏼 Ты со мною забудь обо всём... ")
+                        return
+
                     if not chat.players[from_id].get('has_voted', False):
                         victim_name = f"{chat.players[target_id]['name']} {chat.players[target_id].get('last_name', '')}".strip()
                         chat.vote_counts[target_id] = chat.vote_counts.get(target_id, 0) + 1
@@ -2820,82 +2833,39 @@ def handle_message(message):
     global is_night
     chat_id = message.chat.id
     user_id = message.from_user.id
+
     chat = chat_list.get(chat_id)
+    if chat:
+        if chat.game_running:
+            chat_member = bot.get_chat_member(chat_id, user_id)
+            is_admin = chat_member.status in ['administrator', 'creator']
 
-    if chat and chat.game_running:
-        chat_member = bot.get_chat_member(chat_id, user_id)
-        is_admin = chat_member.status in ['administrator', 'creator']
-        message_type = message.content_type
-        logging.info(f"Получено сообщение от {user_id} типа: {message_type}")
+            # Определяем тип сообщения
+            message_type = message.content_type
+            logging.info(f"Получено сообщение от {user_id} типа: {message_type}")
 
-        # Проверяем, есть ли активная блокировка у пользователя
-        current_time = datetime.now()
-        if user_id in user_mute_times and current_time < user_mute_times[user_id]:
-            remaining_time = (user_mute_times[user_id] - current_time).seconds
-            try:
-                bot.delete_message(chat_id, message.message_id)
-                bot.send_message(user_id, f"🚫 *Вы заблокированы в чате на {remaining_time} сек.*\nНельзя писать в это время.", parse_mode="Markdown")
-            except Exception:
-                pass
-            return  # Прекращаем выполнение функции, если игрок заблокирован
-
-        if is_night:
-            if not is_admin:  # Если это не админ
-        # Удаляем сообщение и мьютим пользователя
-                mute_user(chat_id, user_id)
-                try:
-                    bot.delete_message(chat_id, message.message_id)
-                    bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nСейчас идёт ночь, вам нельзя писать в чат", parse_mode="Markdown")
-                except Exception:
-                    pass
-            elif is_admin and message_type == 'text' and not message.text.startswith('!'):  # Админ пишет без '!'
-        # Только удаляем сообщение без блокировки
-                try:
-                    bot.delete_message(chat_id, message.message_id)
-                except Exception:
-                    pass
+            if is_night:
+                # Ночью удаляем все сообщения, кроме сообщений администраторов, начинающихся с '!'
+                if not (is_admin and message_type == 'text' and message.text.startswith('!')):
+                    try:
+                        logging.info(f"Попытка удаления сообщения ночью от {user_id}: {message_type}")
+                        bot.delete_message(chat_id, message.message_id)
+                    except Exception as e:
+                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
+                else:
+                    logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
             else:
-                logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
-
-        else:
-    # Проверка для дневного времени
-            player = chat.players.get(user_id, {})
-            if ((user_id not in chat.players or player.get('role') == 'dead') or 
-                (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
-                not is_admin:
-        
-        # Блокируем пользователя на 1 минуту
-                mute_user(chat_id, user_id)
-                try:
-                    bot.delete_message(chat_id, message.message_id)
-                    bot.send_message(user_id, "🚫 *Вы заблокированы в чате на 1 мин.*\nВы вне игры, вам нельзя писать в чат", parse_mode="Markdown")
-                except Exception:
-                    pass
-            elif is_admin and message_type == 'text' and not message.text.startswith('!'):
-        # Только удаляем сообщение без блокировки
-                try:
-                    bot.delete_message(chat_id, message.message_id)
-                except Exception:
-                    pass
-            else:
-                logging.info(f"Сообщение днём сохранено от {user_id}: {message.text if message_type == 'text' else message_type}")
-
-def mute_user(chat_id, user_id):
-    """
-    Функция для мьютинга пользователя на 1 минуту.
-    """
-    mute_until = datetime.now() + timedelta(minutes=1)
-    user_mute_times[user_id] = mute_until
-
-    try:
-        # Ограничиваем пользователя на 1 минуту
-        bot.restrict_chat_member(
-            chat_id,
-            user_id,
-            until_date=mute_until,
-            permissions=types.ChatPermissions(can_send_messages=False)
-        )
-    except Exception as e:
-        logging.error(f"Ошибка при мьюте пользователя {user_id}: {e}")
+                # Днём удаляем сообщения от убитых, незарегистрированных игроков или жертвы любовницы (если не была вылечена), кроме сообщений администраторов с '!'
+                player = chat.players.get(user_id, {})
+                if ((user_id not in chat.players or player.get('role') == 'dead') or 
+                    (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
+                    not (is_admin and message_type == 'text' and message.text.startswith('!')):
+                    try:
+                        logging.info(f"Попытка удаления сообщения днём от {user_id}: {message_type}")
+                        bot.delete_message(chat_id, message.message_id)
+                    except Exception as e:
+                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
+                else:
+                    logging.info(f"Сообщение днём сохранено от {user_id}: {message.text if message_type == 'text' else message_type}")
 
 bot.infinity_polling()
