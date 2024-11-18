@@ -1139,7 +1139,7 @@ def process_mafia_action(chat):
 
 def send_profiles_as_file():
     # Замените на ID вашего канала или чата
-    channel_id = '@Hjoxbednxi'
+    channel_id = '@A291123K'
     
     # Создаем CSV-файл в памяти
     output = io.StringIO()
@@ -1224,7 +1224,7 @@ def handle_document(message):
     channel_id = message.chat.id
 
     # Проверяем, что это сообщение в канале
-    if channel_id == -1002499275093:  # Замените на ID вашего канала
+    if channel_id == -1002465823344:  # Замените на ID вашего канала
         if message.document:
             # Получаем файл и загружаем его данные
             file_id = message.document.file_id
