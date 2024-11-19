@@ -2038,7 +2038,7 @@ def notify_night_start(chat_id, players_alive_text):
     private_message_btn = types.InlineKeyboardMarkup()
     private_message_btn.add(types.InlineKeyboardButton('Перейти к боту', url=private_message_url))
 
-    bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/6586', caption='🌙 *Наступает ночь*\nНа улицы города выходят лишь самые отважные и бесстрашные.\nУтром попробуем сосчитать их головы...', parse_mode="Markdown", reply_markup=private_message_btn)
+    bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/6591', caption='🌙 *Наступает ночь*\nНа улицы города выходят лишь самые отважные и бесстрашные.\nУтром попробуем сосчитать их головы...', parse_mode="Markdown", reply_markup=private_message_btn)
     bot.send_message(chat_id=chat_id, text=players_alive_text, parse_mode="Markdown", reply_markup=private_message_btn)
 
 def reset_night_state(chat):
@@ -2295,7 +2295,7 @@ async def game_cycle(chat_id):
                     player['action_taken'] = False
                     player['skipped_actions'] = 0
 
-            bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/6587', caption=f'🌤️ *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
+            bot.send_photo(chat_id, 'https://t.me/Hjoxbednxi/6593', caption=f'🌤️ *День {day_count}*\nВзошло солнце и высушило кровь, пролитую вчера вечером на асфальте...', parse_mode="Markdown")
 
             await asyncio.sleep(4)
 
