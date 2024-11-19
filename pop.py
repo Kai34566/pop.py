@@ -1355,7 +1355,7 @@ def _start_game(chat_id):
         bot.send_message(chat_id, 'Игра уже начата.')
         return
 
-    if len(chat.players) < 3:
+    if len(chat.players) < 4:
         bot.send_message(chat_id, '*Недостаточно игроков для начала игры...*', parse_mode="Markdown")
         reset_registration(chat_id)
         return
