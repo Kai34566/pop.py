@@ -79,7 +79,7 @@ def process_action(message, action_type):
             action_duration = "на ♾️ минут"
         else:
             time_arg = args[-2:]
-            if len(time_arg) != 2 or not time_arg[0].isdigit()
+            if len(time_arg) != 2 or not time_arg[0].isdigit():
                 bot.delete_message(message.chat.id, message.message_id)  # Удаляем команду
                 return
 
