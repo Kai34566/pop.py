@@ -1057,10 +1057,10 @@ def get_or_create_profile(user_id, user_name, user_last_name=None):
             'id': user_id,
             'name': user_name,
             'last_name': user_last_name,  # Сохраняем фамилию
-            'euro': 0,  # Например, стартовый баланс
+            'euro': 100,  # Например, стартовый баланс
             'coins': 0,
-            'shield': 0,
-            'fake_docs': 0  # Инициализируем fake_docs значением 0
+            'shield': 1,
+            'fake_docs': 1  # Инициализируем fake_docs значением 0
         }
         # Сохраняем профиль в словаре
         player_profiles[user_id] = profile
