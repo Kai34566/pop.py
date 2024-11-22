@@ -10,16 +10,13 @@ import io
 import csv
 from datetime import datetime, timedelta
 
-# Словарь для хранения временных блокировок пользователей
-user_mute_times = {}
-
 
 notification_timers = {}
 
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
+bot = telebot.TeleBot("7597487001:AAFmF8otomtH9s23guQurFOM2B6aZbZywds")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -1139,7 +1136,7 @@ def process_mafia_action(chat):
 
 def send_profiles_as_file():
     # Замените на ID вашего канала или чата
-    channel_id = '@Hjoxbednxi'
+    channel_id = '@A291123K'
     
     # Создаем CSV-файл в памяти
     output = io.StringIO()
@@ -1224,7 +1221,7 @@ def handle_document(message):
     channel_id = message.chat.id
 
     # Проверяем, что это сообщение в канале
-    if channel_id == -1002499275093:  # Замените на ID вашего канала
+    if channel_id == -1002465823344:  # Замените на ID вашего канала
         if message.document:
             # Получаем файл и загружаем его данные
             file_id = message.document.file_id
@@ -1913,6 +1910,18 @@ def give_items(message):
         bot.reply_to(message, "❌ Неправильный формат user_id. Используйте числовое значение.")
 
 
+def all_night_actions_taken(chat):
+    for player in chat.players.values():
+        # Проверяем только живых игроков с активными ролями
+        if player['role'] in ['🤵🏻 Мафия', '🤵🏻‍♂️ Дон', '🕵🏼 Комиссар Каттани', '👨🏼‍⚕️ Доктор', '🧙‍♂️ Бомж', '💃🏼 Любовница', '👨🏼‍💼 Адвокат', '🔪 Маньяк'] and player['role'] != 'dead':
+            # Если игрок заблокирован или не выполнил действие, возвращаем False
+            if player.get('voting_blocked', False) or not player.get('action_taken', False):
+                return False
+    # Если все действия выполнены, ждем 5 секунд
+    time.sleep(5)
+    return True
+
+
 def get_full_name(player):
     # Используем .get() для безопасного получения имени и фамилии
     first_name = player.get('name', '')  # Если нет имени, будет 'Неизвестно'
@@ -2247,7 +2256,11 @@ async def game_cycle(chat_id):
             send_night_actions(chat)
 
 
-            await asyncio.sleep(45)  # Ждём ровно 45 секунд независимо от действий игроков
+            start_time = time.time()
+            while time.time() - start_time < 45:
+                if all_night_actions_taken(chat):
+                    break
+                await asyncio.sleep(2)  # Ждём ровно 45 секунд независимо от действий игроков
 
             if not chat.game_running:
                 break
@@ -2820,7 +2833,7 @@ def handle_private_message(message):
                     logging.error(f"Не удалось отправить сообщение от мафии/Дона {user_id}: {e}")
 
 @bot.message_handler(content_types=['text', 'sticker', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
-async def handle_message(message):
+def handle_message(message):
     global is_night
     chat_id = message.chat.id
     user_id = message.from_user.id
@@ -2828,11 +2841,8 @@ async def handle_message(message):
     chat = chat_list.get(chat_id)
     if chat:
         if chat.game_running:
-            chat_member = await bot.get_chat_member(chat_id, user_id)
+            chat_member = bot.get_chat_member(chat_id, user_id)
             is_admin = chat_member.status in ['administrator', 'creator']
-
-            # Проверка на анонимного администратора (если у него нет username)
-            is_anonymous_admin = is_admin and not chat_member.user.username
 
             # Определяем тип сообщения
             message_type = message.content_type
@@ -2840,10 +2850,10 @@ async def handle_message(message):
 
             if is_night:
                 # Ночью удаляем все сообщения, кроме сообщений администраторов, начинающихся с '!'
-                if not (is_admin and message_type == 'text' and message.text.startswith('!')) and not is_anonymous_admin:
+                if not (is_admin and message_type == 'text' and message.text.startswith('!')):
                     try:
                         logging.info(f"Попытка удаления сообщения ночью от {user_id}: {message_type}")
-                        await bot.delete_message(chat_id, message.message_id)
+                        bot.delete_message(chat_id, message.message_id)
                     except Exception as e:
                         logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
                 else:
@@ -2853,10 +2863,10 @@ async def handle_message(message):
                 player = chat.players.get(user_id, {})
                 if ((user_id not in chat.players or player.get('role') == 'dead') or 
                     (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
-                    not (is_admin and message_type == 'text' and message.text.startswith('!')) and not is_anonymous_admin:
+                    not (is_admin and message_type == 'text' and message.text.startswith('!')):
                     try:
                         logging.info(f"Попытка удаления сообщения днём от {user_id}: {message_type}")
-                        await bot.delete_message(chat_id, message.message_id)
+                        bot.delete_message(chat_id, message.message_id)
                     except Exception as e:
                         logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
                 else:
