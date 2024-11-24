@@ -16,7 +16,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7597487001:AAFmF8otomtH9s23guQurFOM2B6aZbZywds")
+bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -1057,10 +1057,10 @@ def get_or_create_profile(user_id, user_name, user_last_name=None):
             'id': user_id,
             'name': user_name,
             'last_name': user_last_name,  # Сохраняем фамилию
-            'euro': 100,  # Например, стартовый баланс
+            'euro': 0,  # Например, стартовый баланс
             'coins': 0,
-            'shield': 1,
-            'fake_docs': 1  # Инициализируем fake_docs значением 0
+            'shield': 0,
+            'fake_docs': 0  # Инициализируем fake_docs значением 0
         }
         # Сохраняем профиль в словаре
         player_profiles[user_id] = profile
@@ -1136,7 +1136,7 @@ def process_mafia_action(chat):
 
 def send_profiles_as_file():
     # Замените на ID вашего канала или чата
-    channel_id = '@A291123K'
+    channel_id = '@Hjoxbednxi'
     
     # Создаем CSV-файл в памяти
     output = io.StringIO()
@@ -1221,7 +1221,7 @@ def handle_document(message):
     channel_id = message.chat.id
 
     # Проверяем, что это сообщение в канале
-    if channel_id == -1002465823344:  # Замените на ID вашего канала
+    if channel_id == -1002499275093:  # Замените на ID вашего канала
         if message.document:
             # Получаем файл и загружаем его данные
             file_id = message.document.file_id
@@ -1581,10 +1581,10 @@ def show_profile(message, user_id, message_id=None, user_name=None):
 
     profile_text = f"*Ваш профиль*\n\n" \
                    f"👤 {escape_markdown(profile['name'])}\n🪪 ID: {user_id}\n\n" \
-                   f"💶 *Евро*: {profile['euro']}\n" \
-                   f"🪙 *Монета*: {profile['coins']}\n\n" \
-                   f"⚔️ *Щит*: {profile['shield']}\n" \
-                   f"📁 *Документы*: {profile['fake_docs']}\n\n"
+                   f"💶 Евро: {profile['euro']}\n" \
+                   f"🪙 Монета: {profile['coins']}\n\n" \
+                   f"⚔️ Щит: {profile['shield']}\n" \
+                   f"📁 Документы: {profile['fake_docs']}\n\n"
 
     markup = types.InlineKeyboardMarkup()
     shop_btn = types.InlineKeyboardButton("🛒 Магазин", callback_data="shop")
@@ -1609,12 +1609,12 @@ def handle_shop_actions(call):
     if call.data == "shop":
         shop_text = f"💶 _Баланс_: {escape_markdown(str(profile['euro']))}\n" \
                     f"🪙 *Монета*: {escape_markdown(str(profile['coins']))}\n\n" \
-                    f"⚔️ *Щит* (💶 150)\n_Спасет вас один раз от смерти._\n\n" \
-                    f"📁 *Поддельные документы* (💶 200)\n_Комиссар увидит вас как мирного жителя._"
+                    f"⚔️ *Щит* - 💶 150\n_Спасет вас один раз от смерти._\n\n" \
+                    f"📁 *Документы* - 💶 200\n_Комиссар увидит вас как мирного жителя._"
         
         markup = types.InlineKeyboardMarkup()
         buy_shield_btn = types.InlineKeyboardButton("⚔️ Щит - 💶 150", callback_data="buy_shield")
-        buy_docs_btn = types.InlineKeyboardButton("📁 Поддельные документы - 💶 200", callback_data="buy_fake_docs")
+        buy_docs_btn = types.InlineKeyboardButton("📁 Документы - 💶 200", callback_data="buy_fake_docs")
         back_btn = types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_profile")
         markup.add(buy_shield_btn, buy_docs_btn)
         markup.add(back_btn)
@@ -2832,6 +2832,13 @@ def handle_private_message(message):
                 except Exception as e:
                     logging.error(f"Не удалось отправить сообщение от мафии/Дона {user_id}: {e}")
 
+def delete_message_in_thread(chat_id, message_id):
+    try:
+        bot.delete_message(chat_id, message_id)
+        logging.info(f"Сообщение {message_id} успешно удалено.")
+    except Exception as e:
+        logging.error(f"Ошибка при удалении сообщения {message_id}: {e}")
+
 @bot.message_handler(content_types=['text', 'sticker', 'photo', 'video', 'document', 'audio', 'voice', 'animation'])
 def handle_message(message):
     global is_night
@@ -2851,11 +2858,9 @@ def handle_message(message):
             if is_night:
                 # Ночью удаляем все сообщения, кроме сообщений администраторов, начинающихся с '!'
                 if not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                    try:
-                        logging.info(f"Попытка удаления сообщения ночью от {user_id}: {message_type}")
-                        bot.delete_message(chat_id, message.message_id)
-                    except Exception as e:
-                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
+                    logging.info(f"Попытка удаления сообщения ночью от {user_id}: {message_type}")
+                    # Удаляем сообщение в отдельном потоке с обработкой исключений
+                    threading.Thread(target=delete_message_in_thread, args=(chat_id, message.message_id)).start()
                 else:
                     logging.info(f"Сообщение ночью сохранено от {user_id} (админ с '!'): {message.text if message_type == 'text' else message_type}")
             else:
@@ -2864,11 +2869,9 @@ def handle_message(message):
                 if ((user_id not in chat.players or player.get('role') == 'dead') or 
                     (user_id == chat.lover_target_id and not player.get('healed_from_lover', False))) and \
                     not (is_admin and message_type == 'text' and message.text.startswith('!')):
-                    try:
-                        logging.info(f"Попытка удаления сообщения днём от {user_id}: {message_type}")
-                        bot.delete_message(chat_id, message.message_id)
-                    except Exception as e:
-                        logging.error(f"Ошибка при удалении сообщения от {user_id}: {e}")
+                    logging.info(f"Попытка удаления сообщения днём от {user_id}: {message_type}")
+                    # Удаляем сообщение в отдельном потоке с обработкой исключений
+                    threading.Thread(target=delete_message_in_thread, args=(chat_id, message.message_id)).start()
                 else:
                     logging.info(f"Сообщение днём сохранено от {user_id}: {message.text if message_type == 'text' else message_type}")
 
