@@ -16,7 +16,7 @@ notification_timers = {}
 
 logging.basicConfig(level=logging.INFO)
 
-bot = telebot.TeleBot("7526419069:AAFpc9Is0TzP_0GQsYhvYmHA6dyWvvQ9O8w")
+bot = telebot.TeleBot("7597487001:AAFmF8otomtH9s23guQurFOM2B6aZbZywds")
 
 # Словарь со всеми чатами и игроками в этих чатах
 chat_list = {}
@@ -1314,10 +1314,8 @@ def start_message(message):
         # Клавиатура для других действий, если команда /start без параметров
         keyboard = types.InlineKeyboardMarkup()
         join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
-        keyboard.add(join_chat_btn)
-        
         news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FrenemyMafiaNews')
-        keyboard.add(news_btn)
+        keyboard.add(join_chat_btn, news_btn)
 
         bot_username = bot.get_me().username
         add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
@@ -1349,7 +1347,6 @@ def _start_game(chat_id):
 
     chat = chat_list[chat_id]
     if chat.game_running:
-        bot.send_message(chat_id, 'Игра уже начата.')
         return
 
     if len(chat.players) < 4:
@@ -1596,7 +1593,9 @@ def show_profile(message, user_id, message_id=None, user_name=None):
     else:
         bot.send_message(message.chat.id, profile_text, reply_markup=markup, parse_mode="Markdown")
 
-@bot.callback_query_handler(func=lambda call: call.data in ['shop', 'buy_coins', 'buy_shield', 'buy_fake_docs', 'back_to_profile'])
+
+@bot.callback_query_handler(func=lambda call: call.data in ['shop', 'buy_coins', 'buy_shield', 'buy_fake_docs', 'back_to_profile'] + 
+                            [f'buy_coins_{i}' for i in range(1, 9)])
 def handle_shop_actions(call):
     user_id = call.from_user.id
     user_name = f"{call.from_user.first_name} {call.from_user.last_name}".strip()  # Добавляем фамилию
@@ -1608,7 +1607,7 @@ def handle_shop_actions(call):
 
     if call.data == "shop":
         shop_text = f"🛒 *Магазин*\n\n" \
-                    f"💶 _Баланс_: {escape_markdown(str(profile['euro']))}\n" \
+                    f"💶 _Евро_: {escape_markdown(str(profile['euro']))}\n" \
                     f"🪙 _Монета_: {escape_markdown(str(profile['coins']))}\n\n" \
                     f"⚔️ *Щит* - 💶 150\nЕсли на вас нападут с целью убить, Щит может спасти вас один раз\n\n" \
                     f"📁 *Документы* - 💶 200\nПредназначены для враждебных комиссару ролей (Дон, Мафия и т.д.). Если Комиссар попытается проверить вас, то у вас отобразится роль Мирный житель"
@@ -1629,7 +1628,7 @@ def handle_shop_actions(call):
             profile['shield'] += 1
             player_profiles[user_id] = profile
 
-            purchase_text = f"*Вы успешно купили щит!*\n\n💶 _Баланс_: {escape_markdown(str(profile['euro']))}\n🪙 *Монета:* {escape_markdown(str(profile['coins']))}\n⚔️ *Щитов:* {escape_markdown(str(profile['shield']))}\n📁 *Поддельные документы:* {escape_markdown(str(profile['fake_docs']))}"
+            purchase_text = f"*Вы успешно купили щит!*\n\n💶 _Евро_: {escape_markdown(str(profile['euro']))}\n🪙 _Монета:_ {escape_markdown(str(profile['coins']))}\n⚔️ *Щитов:* {escape_markdown(str(profile['shield']))}\n📁 *Поддельные документы:* {escape_markdown(str(profile['fake_docs']))}"
             bot.answer_callback_query(call.id, "✅ Вы успешно купили ⚔️ Щит", show_alert=True)
             
             markup = types.InlineKeyboardMarkup()
@@ -1646,7 +1645,7 @@ def handle_shop_actions(call):
             profile['fake_docs'] += 1
             player_profiles[user_id] = profile
 
-            purchase_text = f"*Вы успешно купили поддельные документы!*\n\n💶 _Баланс:_ {escape_markdown(str(profile['euro']))}\n🪙 *Монета:* {escape_markdown(str(profile['coins']))}\n⚔️ *Щитов:* {escape_markdown(str(profile['shield']))}\n📁 *Поддельные документы:* {escape_markdown(str(profile['fake_docs']))}"
+            purchase_text = f"*Вы успешно купили поддельные документы!*\n\n💶 _Евро:_ {escape_markdown(str(profile['euro']))}\n🪙 _Монета:_ {escape_markdown(str(profile['coins']))}\n⚔️ *Щитов:* {escape_markdown(str(profile['shield']))}\n📁 *Поддельные документы:* {escape_markdown(str(profile['fake_docs']))}"
             bot.answer_callback_query(call.id, "✅ Вы успешно купили Поддельные Документы!", show_alert=True)
             
             markup = types.InlineKeyboardMarkup()
@@ -1658,13 +1657,59 @@ def handle_shop_actions(call):
             bot.answer_callback_query(call.id, "❌ Недостаточно средств для покупки", show_alert=True)
 
     if call.data == "buy_coins":
-        bot.send_message(user_id, "На данный момент кнопка находится в разработке\nВсе цены будут такими:\n\n🪙 1 - 25 RUB\n🪙 2 - 50 RUB\n🪙 5 - 110 RUB\n🪙 10 - 210 RUB\n🪙 20 - 390 RUB\n🪙 50 - 900 RUB\n🪙 100 - 1720 RUB\n🪙 200 - 3440 RUB")
+        coins_text = f"💶 _Евро_: {escape_markdown(str(profile['euro']))}\n" \
+                     f"🪙 _Монета_: {escape_markdown(str(profile['coins']))}\n\n" \
+                     f"Выберите вариант"
+        
+        markup = types.InlineKeyboardMarkup()
+        buy_coins_btn = types.InlineKeyboardButton("🪙 1 - 25 RUB", callback_data="buy_coins_1")
+        buy_coinss_btn = types.InlineKeyboardButton("🪙 2 - 50 RUB", callback_data="buy_coins_2")
+        buy_coinsss_btn = types.InlineKeyboardButton("🪙 5 - 110 RUB", callback_data="buy_coins_3")
+        buy_coinssss_btn = types.InlineKeyboardButton("🪙 10 - 210 RUB", callback_data="buy_coins_4")
+        buy_coinsssss_btn = types.InlineKeyboardButton("🪙 20 - 390 RUB", callback_data="buy_coins_5")
+        buy_coinssssss_btn = types.InlineKeyboardButton("🪙 50 - 900 RUB", callback_data="buy_coins_6")
+        buy_coinsssssss_btn = types.InlineKeyboardButton("🪙 100 - 1720 RUB", callback_data="buy_coins_7")
+        buy_coinssssssss_btn = types.InlineKeyboardButton("🪙 200 - 3440 RUB", callback_data="buy_coins_8")
+        back_btn = types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_profile")
+        markup.add(buy_coins_btn)
+        markup.add(buy_coinss_btn)
+        markup.add(buy_coinsss_btn)
+        markup.add(buy_coinssss_btn)
+        markup.add(buy_coinsssss_btn)
+        markup.add(buy_coinssssss_btn)
+        markup.add(buy_coinsssssss_btn)
+        markup.add(buy_coinssssssss_btn)
+        markup.add(back_btn)
+        
+        bot.edit_message_text(coins_text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+
+    elif call.data == "buy_coins_1":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_2":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_3":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_4":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_5":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_6":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_7":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
+
+    elif call.data == "buy_coins_8":
+        bot.answer_callback_query(call.id, "🚷 В данный момент на разработке!", show_alert=True)
 
     elif call.data == "back_to_profile":
         profile = player_profiles[user_id]  # Обновляем профиль из глобального словаря
         show_profile(call.message, message_id=call.message.message_id, user_id=user_id, user_name=user_name)
-
-
 
 @bot.message_handler(commands=['help'])
 def send_help(message):
