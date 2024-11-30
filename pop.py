@@ -1384,7 +1384,7 @@ def _start_game(chat_id):
     shuffle(players_list)
 
     num_players = len(players_list)
-    num_mafias = max(1, (num_players // 4))  # Минимум одна мафия
+    num_mafias = max(1, (num_players // 3))  # Минимум одна мафия
     mafia_assigned = 0
 
     # Установим статус alive для всех игроков перед началом игр
