@@ -1609,12 +1609,12 @@ def handle_shop_actions(call):
         shop_text = f"🛒 *Магазин*\n\n" \
                     f"💶 _Евро_: {escape_markdown(str(profile['euro']))}\n" \
                     f"🪙 _Монета_: {escape_markdown(str(profile['coins']))}\n\n" \
-                    f"⚔️ *Щит* - 💶 150\nЕсли на вас нападут с целью убить, Щит может спасти вас один раз\n\n" \
-                    f"📁 *Документы* - 💶 200\nПредназначены для враждебных комиссару ролей (Дон, Мафия и т.д.). Если Комиссар попытается проверить вас, то у вас отобразится роль Мирный житель"
+                    f"⚔️ *Щит* - 💶 100\nЕсли на вас нападут с целью убить, Щит может спасти вас один раз\n\n" \
+                    f"📁 *Документы* - 💶 150\nПредназначены для враждебных комиссару ролей (Дон, Мафия и т.д.). Если Комиссар попытается проверить вас, то у вас отобразится роль Мирный житель"
         
         markup = types.InlineKeyboardMarkup()
-        buy_shield_btn = types.InlineKeyboardButton("⚔️ Щит - 💶 150", callback_data="buy_shield")
-        buy_docs_btn = types.InlineKeyboardButton("📁 Документы - 💶 200", callback_data="buy_fake_docs")
+        buy_shield_btn = types.InlineKeyboardButton("⚔️ Щит - 💶 100", callback_data="buy_shield")
+        buy_docs_btn = types.InlineKeyboardButton("📁 Документы - 💶 150", callback_data="buy_fake_docs")
         back_btn = types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_profile")
         markup.add(buy_shield_btn)
         markup.add(buy_docs_btn)
@@ -1623,8 +1623,8 @@ def handle_shop_actions(call):
         bot.edit_message_text(shop_text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
     elif call.data == "buy_shield":
-        if profile['euro'] >= 150:
-            profile['euro'] -= 150
+        if profile['euro'] >= 100:
+            profile['euro'] -= 100
             profile['shield'] += 1
             player_profiles[user_id] = profile
 
@@ -1640,8 +1640,8 @@ def handle_shop_actions(call):
             bot.answer_callback_query(call.id, "❌ Недостаточно средств для покупки", show_alert=True)
 
     elif call.data == "buy_fake_docs":
-        if profile['euro'] >= 200:
-            profile['euro'] -= 200
+        if profile['euro'] >= 150:
+            profile['euro'] -= 150
             profile['fake_docs'] += 1
             player_profiles[user_id] = profile
 
