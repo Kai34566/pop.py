@@ -1317,15 +1317,14 @@ def start_message(message):
                 return
 
         # Клавиатура для других действий, если команда /start без параметров
+        bot_username = bot.get_me().username
+        add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
+        add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
         keyboard = types.InlineKeyboardMarkup()
         join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
         news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FrenemyMafiaNews')
         keyboard.add(add_to_group_btn)
         keyboard.add(join_chat_btn, news_btn)
-
-        bot_username = bot.get_me().username
-        add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
-        add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
 
         bot.send_message(chat_id, '*Привет!*\nЯ бот-ведущий для игры в 🤵🏻 *Мафию.*\nДобавь меня в чат, назначь администратором и начни играть бесплатно', reply_markup=keyboard, parse_mode="Markdown")
 
