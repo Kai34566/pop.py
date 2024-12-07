@@ -1106,12 +1106,17 @@ def process_mafia_action(chat):
         if mafia_victim and mafia_victim in chat.players:
             victim_profile = chat.players[mafia_victim]
             mafia_victim_name = f"{victim_profile['name']} {victim_profile.get('last_name', '')}".replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').strip()
+
             try:
                 send_message_to_mafia(chat, f"*Голосование завершено*\nМафия выбрала жертву: {mafia_victim_name}")
             except Exception as e:
                 logging.error(f"Не удалось отправить сообщение мафии о выборе жертвы: {e}")
             
             try:
+                # Имитация печати перед отправкой сообщения
+                bot.send_chat_action(chat.chat_id, action="typing")
+                time.sleep(4)  # Задержка для реалистичности
+
                 bot.send_message(chat.chat_id, "🤵🏻 *Мафия* выбрала жертву...", parse_mode="Markdown")
             except Exception as e:
                 logging.error(f"Не удалось отправить сообщение в чат о выборе жертвы мафией: {e}")
@@ -1315,12 +1320,12 @@ def start_message(message):
         keyboard = types.InlineKeyboardMarkup()
         join_chat_btn = types.InlineKeyboardButton('Войти в чат', callback_data='join_chat')
         news_btn = types.InlineKeyboardButton('📰 Новости', url='t.me/FrenemyMafiaNews')
+        keyboard.add(add_to_group_btn)
         keyboard.add(join_chat_btn, news_btn)
 
         bot_username = bot.get_me().username
         add_to_group_url = f'https://t.me/{bot_username}?startgroup=bot_command'
         add_to_group_btn = types.InlineKeyboardButton('🤵🏽 Добавить игру в свой чат', url=add_to_group_url)
-        keyboard.add(add_to_group_btn)
 
         bot.send_message(chat_id, '*Привет!*\nЯ бот-ведущий для игры в 🤵🏻 *Мафию.*\nДобавь меня в чат, назначь администратором и начни играть бесплатно', reply_markup=keyboard, parse_mode="Markdown")
 
